@@ -122,7 +122,7 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           {showForgotPassword ? (
-            <Form {...forgotPasswordForm}>
+            <Form {...forgotPasswordForm} key="forgot-password-form">
               <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)} className="space-y-4">
                 <FormField
                   control={forgotPasswordForm.control}
@@ -134,7 +134,10 @@ export default function Auth() {
                         <Input
                           type="email"
                           placeholder="seu@email.com"
+                          autoComplete="email"
                           {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(e.target.value)}
                         />
                       </FormControl>
                       <FormMessage />
