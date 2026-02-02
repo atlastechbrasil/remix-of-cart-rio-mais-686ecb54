@@ -150,7 +150,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fk_lancamento_vinculado"
+            foreignKeyName: "extrato_itens_lancamento_vinculado_id_fkey"
             columns: ["lancamento_vinculado_id"]
             isOneToOne: false
             referencedRelation: "lancamentos"
