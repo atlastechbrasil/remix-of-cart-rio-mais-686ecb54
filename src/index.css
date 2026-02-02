@@ -1,0 +1,168 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Background & Foreground */
+    --background: 210 20% 98%;
+    --foreground: 215 25% 15%;
+
+    /* Card surfaces */
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    /* Popover */
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    /* Primary - Emerald Green from FinCart logo */
+    --primary: 153 55% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Deep Blue from FinCart logo */
+    --secondary: 207 65% 36%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted surfaces */
+    --muted: 210 15% 93%;
+    --muted-foreground: 215 15% 45%;
+
+    /* Accent - Light blue-green */
+    --accent: 175 45% 94%;
+    --accent-foreground: 153 55% 35%;
+
+    /* Destructive - For expenses/alerts */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Success - For positive indicators */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 38 92% 50%;
+    --warning-foreground: 215 25% 15%;
+
+    /* Info */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    /* Borders & Inputs */
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 153 55% 40%;
+
+    --radius: 0.625rem;
+
+    /* Sidebar - Deep blue gradient */
+    --sidebar-background: 215 50% 18%;
+    --sidebar-foreground: 210 15% 85%;
+    --sidebar-primary: 153 55% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 45% 25%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 40% 25%;
+    --sidebar-ring: 153 55% 50%;
+
+    /* Chart colors */
+    --chart-1: 153 55% 40%;
+    --chart-2: 207 65% 36%;
+    --chart-3: 142 71% 45%;
+    --chart-4: 199 89% 48%;
+    --chart-5: 280 65% 60%;
+  }
+
+  .dark {
+    --background: 215 30% 10%;
+    --foreground: 210 15% 92%;
+
+    --card: 215 30% 14%;
+    --card-foreground: 210 15% 92%;
+
+    --popover: 215 30% 14%;
+    --popover-foreground: 210 15% 92%;
+
+    --primary: 153 55% 50%;
+    --primary-foreground: 215 30% 10%;
+
+    --secondary: 207 60% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 215 25% 20%;
+    --muted-foreground: 210 15% 60%;
+
+    --accent: 175 35% 22%;
+    --accent-foreground: 153 55% 70%;
+
+    --destructive: 0 62% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 65% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 85% 55%;
+    --warning-foreground: 215 30% 10%;
+
+    --info: 199 80% 55%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 215 25% 22%;
+    --input: 215 25% 22%;
+    --ring: 153 55% 50%;
+
+    --sidebar-background: 215 35% 8%;
+    --sidebar-foreground: 210 15% 80%;
+    --sidebar-primary: 153 55% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 30% 15%;
+    --sidebar-accent-foreground: 210 15% 92%;
+    --sidebar-border: 215 25% 18%;
+    --sidebar-ring: 153 55% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
+  }
+
+  .stat-card {
+    @apply bg-card rounded-lg border border-border p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20;
+  }
+
+  .gradient-primary {
+    @apply bg-gradient-to-r from-primary to-secondary;
+  }
+
+  .gradient-success {
+    @apply bg-gradient-to-r from-success to-success/80;
+  }
+
+  .gradient-warning {
+    @apply bg-gradient-to-r from-warning to-warning/80;
+  }
+
+  .conciliado {
+    @apply bg-success/10 text-success border-success/20;
+  }
+
+  .pendente {
+    @apply bg-warning/10 text-warning border-warning/20;
+  }
+
+  .divergente {
+    @apply bg-destructive/10 text-destructive border-destructive/20;
+  }
+}
