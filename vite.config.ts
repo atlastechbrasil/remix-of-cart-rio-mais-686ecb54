@@ -28,7 +28,7 @@ export default defineConfig(async ({ mode }) => {
       host: true,
       port: 8080,
       allowedHosts: [
-        "fincart-fincart.zn6b4j.easypanel.host",
+        "fincart.com.br",
       ],
     },
 
