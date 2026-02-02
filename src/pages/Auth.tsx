@@ -80,20 +80,41 @@ export default function Auth() {
 
   const handleForgotPassword = async (data: ForgotPasswordFormData) => {
     setIsLoading(true);
+    
+    // First, trigger Supabase password reset to generate the token
     const redirectUrl = `${window.location.origin}/auth`;
     
-    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+    const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(data.email, {
       redirectTo: redirectUrl,
     });
-    setIsLoading(false);
 
-    if (error) {
+    if (supabaseError) {
+      setIsLoading(false);
       toast.error("Erro ao enviar email de recuperação. Tente novamente.");
-    } else {
-      toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
-      forgotPasswordForm.reset();
-      setShowForgotPassword(false);
+      return;
     }
+
+    // Send custom email via Resend
+    try {
+      const { error: functionError } = await supabase.functions.invoke('send-password-reset', {
+        body: {
+          email: data.email,
+          resetUrl: redirectUrl,
+        },
+      });
+
+      if (functionError) {
+        console.error("Error sending custom email:", functionError);
+        // Even if custom email fails, Supabase already sent the default one
+      }
+    } catch (err) {
+      console.error("Error invoking edge function:", err);
+    }
+
+    setIsLoading(false);
+    toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
+    forgotPasswordForm.reset();
+    setShowForgotPassword(false);
   };
 
   if (loading) {
