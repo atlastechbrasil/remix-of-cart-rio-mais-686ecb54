@@ -1,40 +1,10 @@
-import { AlertTriangle, ArrowRight, Clock } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-const divergencias = [
-  {
-    id: 1,
-    descricao: "Energia Elétrica - Janeiro",
-    valorExtrato: 890,
-    valorSistema: 920,
-    diferenca: -30,
-    data: "28/01/2024",
-    conta: "Banco do Brasil",
-    tipo: "valor",
-  },
-  {
-    id: 2,
-    descricao: "Depósito não identificado",
-    valorExtrato: 1250,
-    valorSistema: null,
-    diferenca: 1250,
-    data: "26/01/2024",
-    conta: "Itaú",
-    tipo: "ausente_sistema",
-  },
-  {
-    id: 3,
-    descricao: "Taxa bancária duplicada",
-    valorExtrato: 45,
-    valorSistema: 22.5,
-    diferenca: -22.5,
-    data: "25/01/2024",
-    conta: "Banco do Brasil",
-    tipo: "valor",
-  },
-];
+import { useDivergencias } from "@/hooks/useDashboardStats";
+import { Link, useNavigate } from "react-router-dom";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -44,6 +14,61 @@ const formatCurrency = (value: number) => {
 };
 
 export function DivergenciasWidget() {
+  const { data: divergencias, isLoading } = useDivergencias();
+  const navigate = useNavigate();
+
+  if (isLoading) {
+    return (
+      <Card className="animate-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-destructive" />
+            Divergências Recentes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="p-3 rounded-lg border">
+                <Skeleton className="h-4 w-48 mb-2" />
+                <Skeleton className="h-3 w-32 mb-2" />
+                <Skeleton className="h-3 w-40" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!divergencias || divergencias.length === 0) {
+    return (
+      <Card className="animate-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-success" />
+            Divergências
+          </CardTitle>
+          <Link
+            to="/conciliacao"
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            Ver conciliação
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <CheckCircle className="w-12 h-12 mb-2 text-success opacity-70" />
+            <p className="text-sm font-medium text-success">Tudo conciliado!</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Nenhuma divergência encontrada
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="animate-fade-in">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -51,12 +76,12 @@ export function DivergenciasWidget() {
           <AlertTriangle className="w-5 h-5 text-destructive" />
           Divergências Recentes
         </CardTitle>
-        <a
-          href="/conciliacao"
+        <Link
+          to="/conciliacao"
           className="text-sm text-primary hover:underline font-medium"
         >
           Ver todas
-        </a>
+        </Link>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -74,7 +99,12 @@ export function DivergenciasWidget() {
                     {item.conta} • {item.data}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" className="h-7">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7"
+                  onClick={() => navigate("/conciliacao")}
+                >
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>

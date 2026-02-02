@@ -3,9 +3,7 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  ArrowRightLeft,
   Calendar,
-  TrendingUp,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -22,8 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+
+const formatCurrency = (value: number) => {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
+};
 
 const Index = () => {
+  const { data: stats, isLoading } = useDashboardStats();
+
   return (
     <MainLayout>
       <PageHeader
@@ -31,15 +39,15 @@ const Index = () => {
         description="Visão geral da conciliação bancária"
       >
         <div className="flex items-center gap-2">
-          <Select defaultValue="janeiro">
+          <Select defaultValue="atual">
             <SelectTrigger className="w-36">
               <Calendar className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Período" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="janeiro">Janeiro 2024</SelectItem>
-              <SelectItem value="fevereiro">Fevereiro 2024</SelectItem>
-              <SelectItem value="marco">Março 2024</SelectItem>
+              <SelectItem value="atual">Mês Atual</SelectItem>
+              <SelectItem value="anterior">Mês Anterior</SelectItem>
+              <SelectItem value="trimestre">Último Trimestre</SelectItem>
             </SelectContent>
           </Select>
           <Button>
@@ -53,31 +61,35 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             title="Saldo Bancário Total"
-            value="R$ 260.811,25"
+            value={formatCurrency(stats?.saldoTotal || 0)}
             icon={Landmark}
             variant="primary"
-            trend={{ value: 8.5, isPositive: true }}
+            trend={stats?.trendSaldo ? { value: stats.trendSaldo, isPositive: stats.trendSaldo > 0 } : undefined}
+            isLoading={isLoading}
           />
           <StatCard
             title="Lançamentos Conciliados"
-            value="342"
+            value={String(stats?.totalConciliados || 0)}
             icon={CheckCircle2}
             variant="success"
-            trend={{ value: 12.2, isPositive: true }}
+            trend={stats?.trendConciliados ? { value: stats.trendConciliados, isPositive: stats.trendConciliados > 0 } : undefined}
+            isLoading={isLoading}
           />
           <StatCard
             title="Pendentes de Conciliação"
-            value="16"
+            value={String(stats?.totalPendentes || 0)}
             icon={Clock}
             variant="warning"
-            trend={{ value: 5.8, isPositive: false }}
+            trend={stats?.trendPendentes ? { value: Math.abs(stats.trendPendentes), isPositive: stats.trendPendentes < 0 } : undefined}
+            isLoading={isLoading}
           />
           <StatCard
             title="Divergências Identificadas"
-            value="3"
+            value={String(stats?.totalDivergentes || 0)}
             icon={AlertTriangle}
             variant="destructive"
-            trend={{ value: 2.1, isPositive: false }}
+            trend={stats?.trendDivergentes ? { value: Math.abs(stats.trendDivergentes), isPositive: stats.trendDivergentes < 0 } : undefined}
+            isLoading={isLoading}
           />
         </div>
 

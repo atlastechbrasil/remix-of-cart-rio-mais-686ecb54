@@ -1,49 +1,9 @@
 import { ArrowUpRight, ArrowDownLeft, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-const transactions = [
-  {
-    id: 1,
-    description: "Registro de Imóvel - Matrícula 45.678",
-    type: "receita",
-    value: 2450,
-    date: "Hoje, 14:30",
-    status: "conciliado",
-  },
-  {
-    id: 2,
-    description: "Pagamento Fornecedor",
-    type: "despesa",
-    value: 1200,
-    date: "Hoje, 11:45",
-    status: "conciliado",
-  },
-  {
-    id: 3,
-    description: "Averbação - Matrícula 12.345",
-    type: "receita",
-    value: 185,
-    date: "Hoje, 10:20",
-    status: "pendente",
-  },
-  {
-    id: 4,
-    description: "Certidão de Matrícula",
-    type: "receita",
-    value: 85,
-    date: "Ontem, 16:50",
-    status: "conciliado",
-  },
-  {
-    id: 5,
-    description: "Energia Elétrica",
-    type: "despesa",
-    value: 890,
-    date: "Ontem, 09:00",
-    status: "divergente",
-  },
-];
+import { useRecentTransactions } from "@/hooks/useDashboardStats";
+import { Link } from "react-router-dom";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -59,18 +19,75 @@ const statusIcons = {
 };
 
 export function RecentTransactions() {
+  const { data: transactions, isLoading } = useRecentTransactions(5);
+
+  if (isLoading) {
+    return (
+      <Card className="animate-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold">
+            Transações Recentes
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-48 mb-1" />
+                    <Skeleton className="h-3 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!transactions || transactions.length === 0) {
+    return (
+      <Card className="animate-fade-in">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg font-semibold">
+            Transações Recentes
+          </CardTitle>
+          <Link
+            to="/lancamentos"
+            className="text-sm text-primary hover:underline font-medium"
+          >
+            Ver todas
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <Clock className="w-12 h-12 mb-2 opacity-50" />
+            <p className="text-sm">Nenhuma transação encontrada</p>
+            <Link to="/lancamentos" className="text-primary hover:underline text-sm mt-2">
+              Criar lançamento
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="animate-fade-in">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-lg font-semibold">
           Transações Recentes
         </CardTitle>
-        <a
-          href="/lancamentos"
+        <Link
+          to="/lancamentos"
           className="text-sm text-primary hover:underline font-medium"
         >
           Ver todas
-        </a>
+        </Link>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -83,12 +100,12 @@ export function RecentTransactions() {
                 <div
                   className={cn(
                     "p-2 rounded-full",
-                    transaction.type === "receita"
+                    transaction.tipo === "receita"
                       ? "bg-success/10 text-success"
                       : "bg-destructive/10 text-destructive"
                   )}
                 >
-                  {transaction.type === "receita" ? (
+                  {transaction.tipo === "receita" ? (
                     <ArrowDownLeft className="w-4 h-4" />
                   ) : (
                     <ArrowUpRight className="w-4 h-4" />
@@ -96,10 +113,10 @@ export function RecentTransactions() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {transaction.description}
+                    {transaction.descricao}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {transaction.date}
+                    {transaction.dataFormatada}
                   </p>
                 </div>
               </div>
@@ -108,16 +125,16 @@ export function RecentTransactions() {
                   <p
                     className={cn(
                       "text-sm font-semibold",
-                      transaction.type === "receita"
+                      transaction.tipo === "receita"
                         ? "text-success"
                         : "text-destructive"
                     )}
                   >
-                    {transaction.type === "receita" ? "+" : "-"}
-                    {formatCurrency(transaction.value)}
+                    {transaction.tipo === "receita" ? "+" : "-"}
+                    {formatCurrency(transaction.valor)}
                   </p>
                 </div>
-                {statusIcons[transaction.status as keyof typeof statusIcons]}
+                {statusIcons[transaction.status]}
               </div>
             </div>
           ))}

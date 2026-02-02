@@ -30,17 +30,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Landmark } from "lucide-react";
-import { toast } from "sonner";
+import { Plus, Landmark, Loader2 } from "lucide-react";
+import { useCreateContaBancaria, TipoConta } from "@/hooks/useConciliacao";
 
 const formSchema = z.object({
   banco: z.string().min(1, "Selecione o banco"),
   agencia: z.string().min(1, "Informe a agência").max(10, "Agência inválida"),
   conta: z.string().min(1, "Informe a conta").max(20, "Conta inválida"),
-  tipo: z.string().min(1, "Selecione o tipo de conta"),
+  tipo: z.enum(["corrente", "poupanca", "investimento"], {
+    required_error: "Selecione o tipo de conta",
+  }),
   saldoInicial: z.string().optional(),
   ativo: z.boolean().default(true),
-  descricao: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -60,19 +61,15 @@ const bancos = [
   { codigo: "336", nome: "C6 Bank" },
 ];
 
-const tiposConta = [
+const tiposConta: { value: TipoConta; label: string }[] = [
   { value: "corrente", label: "Conta Corrente" },
   { value: "poupanca", label: "Poupança" },
   { value: "investimento", label: "Investimento" },
-  { value: "salario", label: "Conta Salário" },
 ];
 
-interface NovaContaDialogProps {
-  onContaCriada?: (conta: FormData) => void;
-}
-
-export function NovaContaDialog({ onContaCriada }: NovaContaDialogProps) {
+export function NovaContaDialog() {
   const [open, setOpen] = useState(false);
+  const createConta = useCreateContaBancaria();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -80,19 +77,33 @@ export function NovaContaDialog({ onContaCriada }: NovaContaDialogProps) {
       banco: "",
       agencia: "",
       conta: "",
-      tipo: "",
+      tipo: "corrente",
       saldoInicial: "",
       ativo: true,
-      descricao: "",
     },
   });
 
   const onSubmit = (data: FormData) => {
-    console.log("Nova conta:", data);
-    toast.success("Conta bancária cadastrada com sucesso!");
-    onContaCriada?.(data);
-    form.reset();
-    setOpen(false);
+    const saldoInicial = data.saldoInicial
+      ? parseFloat(data.saldoInicial.replace(/\./g, "").replace(",", "."))
+      : 0;
+
+    createConta.mutate(
+      {
+        banco: data.banco,
+        agencia: data.agencia,
+        conta: data.conta,
+        tipo: data.tipo,
+        saldo: saldoInicial,
+        ativo: data.ativo,
+      },
+      {
+        onSuccess: () => {
+          form.reset();
+          setOpen(false);
+        },
+      }
+    );
   };
 
   return (
@@ -221,26 +232,6 @@ export function NovaContaDialog({ onContaCriada }: NovaContaDialogProps) {
 
             <FormField
               control={form.control}
-              name="descricao"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Ex: Conta principal do cartório"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription className="text-xs">
-                    Identificação adicional (opcional)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="ativo"
               render={({ field }) => (
                 <FormItem className="flex items-center justify-between rounded-lg border p-3">
@@ -268,7 +259,12 @@ export function NovaContaDialog({ onContaCriada }: NovaContaDialogProps) {
               >
                 Cancelar
               </Button>
-              <Button type="submit">Cadastrar Conta</Button>
+              <Button type="submit" disabled={createConta.isPending}>
+                {createConta.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                Cadastrar Conta
+              </Button>
             </DialogFooter>
           </form>
         </Form>

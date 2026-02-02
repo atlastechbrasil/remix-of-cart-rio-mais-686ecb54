@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -41,7 +41,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { useCreateLancamento, TipoLancamento, StatusLancamento } from "@/hooks/useConciliacao";
 
 const lancamentoSchema = z.object({
   tipo: z.enum(["receita", "despesa"], {
@@ -67,12 +67,11 @@ const lancamentoSchema = z.object({
     required_error: "Data é obrigatória",
   }),
   categoria: z.string().min(1, { message: "Categoria é obrigatória" }),
-  centroCusto: z.string().optional(),
-  responsavel: z.string().min(1, { message: "Responsável é obrigatório" }),
+  responsavel: z.string().optional(),
   status: z.enum(["pago", "pendente", "agendado"], {
     required_error: "Status é obrigatório",
   }),
-  observacao: z
+  observacoes: z
     .string()
     .max(500, { message: "Observação deve ter no máximo 500 caracteres" })
     .optional(),
@@ -81,12 +80,11 @@ const lancamentoSchema = z.object({
 type LancamentoFormData = z.infer<typeof lancamentoSchema>;
 
 const categoriasReceita = [
-  "Escritura",
-  "Procuração",
-  "Testamento",
-  "Inventário",
-  "Reconhecimento",
-  "Autenticação",
+  "Registro",
+  "Averbação",
+  "Certidão",
+  "Busca",
+  "Prenotação",
   "Outros Atos",
 ];
 
@@ -100,29 +98,14 @@ const categoriasDespesa = [
   "Outros",
 ];
 
-const responsaveis = [
-  "Maria Santos",
-  "Carlos Oliveira",
-  "Ana Costa",
-  "Pedro Lima",
-  "Lucia Ferreira",
-  "Sistema",
-];
-
-const centrosCusto = [
-  "Operacional",
-  "Administrativo",
-  "Comercial",
-  "Tecnologia",
-];
-
 interface NovoLancamentoDialogProps {
   trigger?: React.ReactNode;
 }
 
 export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
   const [open, setOpen] = useState(false);
-  const [tipoSelecionado, setTipoSelecionado] = useState<"receita" | "despesa">("receita");
+  const [tipoSelecionado, setTipoSelecionado] = useState<TipoLancamento>("receita");
+  const createLancamento = useCreateLancamento();
 
   const form = useForm<LancamentoFormData>({
     resolver: zodResolver(lancamentoSchema),
@@ -131,55 +114,55 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
       descricao: "",
       valor: "",
       categoria: "",
-      centroCusto: "",
       responsavel: "",
       status: "pendente",
-      observacao: "",
+      observacoes: "",
     },
   });
 
   const categorias = tipoSelecionado === "receita" ? categoriasReceita : categoriasDespesa;
 
   const formatCurrency = (value: string) => {
-    // Remove non-numeric characters except comma and dot
     let cleaned = value.replace(/[^\d,]/g, "");
-    
-    // Handle the decimal part
     const parts = cleaned.split(",");
     if (parts.length > 2) {
       cleaned = parts[0] + "," + parts.slice(1).join("");
     }
-    
-    // Limit decimal places to 2
     if (parts.length === 2 && parts[1].length > 2) {
       cleaned = parts[0] + "," + parts[1].substring(0, 2);
     }
-    
     return cleaned;
   };
 
   const onSubmit = (data: LancamentoFormData) => {
-    // In a real app, this would send to the backend
-    console.log("Lançamento criado:", {
-      ...data,
-      valor: parseFloat(data.valor.replace(/\./g, "").replace(",", ".")),
-    });
-    
-    toast.success(
-      `${data.tipo === "receita" ? "Receita" : "Despesa"} registrada com sucesso!`,
+    const valorNumerico = parseFloat(data.valor.replace(/\./g, "").replace(",", "."));
+
+    createLancamento.mutate(
       {
-        description: `${data.descricao} - R$ ${data.valor}`,
+        tipo: data.tipo as TipoLancamento,
+        descricao: data.descricao,
+        valor: valorNumerico,
+        data: format(data.data, "yyyy-MM-dd"),
+        categoria: data.categoria,
+        responsavel: data.responsavel || null,
+        status: data.status as StatusLancamento,
+        observacoes: data.observacoes || null,
+        status_conciliacao: "pendente",
+        extrato_item_vinculado_id: null,
+      },
+      {
+        onSuccess: () => {
+          form.reset();
+          setOpen(false);
+        },
       }
     );
-    
-    form.reset();
-    setOpen(false);
   };
 
-  const handleTipoChange = (tipo: "receita" | "despesa") => {
+  const handleTipoChange = (tipo: TipoLancamento) => {
     setTipoSelecionado(tipo);
     form.setValue("tipo", tipo);
-    form.setValue("categoria", ""); // Reset category when type changes
+    form.setValue("categoria", "");
   };
 
   return (
@@ -211,7 +194,7 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
                   <FormLabel>Tipo de Lançamento</FormLabel>
                   <FormControl>
                     <RadioGroup
-                      onValueChange={(value) => handleTipoChange(value as "receita" | "despesa")}
+                      onValueChange={(value) => handleTipoChange(value as TipoLancamento)}
                       defaultValue={field.value}
                       className="flex gap-4"
                     >
@@ -266,7 +249,7 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
                     <FormLabel>Descrição</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Ex: Escritura de Compra e Venda - Lote 45"
+                        placeholder="Ex: Registro de Imóvel - Matrícula 45.678"
                         {...field}
                         maxLength={200}
                       />
@@ -344,7 +327,7 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
               />
             </div>
 
-            {/* Categoria e Centro de Custo */}
+            {/* Categoria e Responsável */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -362,59 +345,6 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
                         {categorias.map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="centroCusto"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Centro de Custo (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o centro" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {centrosCusto.map((centro) => (
-                          <SelectItem key={centro} value={centro}>
-                            {centro}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Responsável e Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="responsavel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Responsável</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o responsável" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {responsaveis.map((resp) => (
-                          <SelectItem key={resp} value={resp}>
-                            {resp}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -448,10 +378,28 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
               />
             </div>
 
+            {/* Responsável */}
+            <FormField
+              control={form.control}
+              name="responsavel"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Responsável (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Nome do responsável"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* Observação */}
             <FormField
               control={form.control}
-              name="observacao"
+              name="observacoes"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Observação (Opcional)</FormLabel>
@@ -481,11 +429,18 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
               >
                 Cancelar
               </Button>
-              <Button type="submit" className={cn(
-                tipoSelecionado === "receita" 
-                  ? "bg-success hover:bg-success/90" 
-                  : "bg-destructive hover:bg-destructive/90"
-              )}>
+              <Button
+                type="submit"
+                disabled={createLancamento.isPending}
+                className={cn(
+                  tipoSelecionado === "receita"
+                    ? "bg-success hover:bg-success/90"
+                    : "bg-destructive hover:bg-destructive/90"
+                )}
+              >
+                {createLancamento.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
                 Registrar {tipoSelecionado === "receita" ? "Receita" : "Despesa"}
               </Button>
             </div>

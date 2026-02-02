@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -7,10 +7,9 @@ import {
   Filter,
   Calendar,
   RefreshCw,
-  Check,
-  X,
-  Eye,
   Link2,
+  Unlink,
+  Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -31,30 +30,16 @@ import {
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-
-// Mock data - Extrato bancário
-const extratoItems = [
-  { id: 1, data: "29/01/2024", descricao: "TED RECEBIDA - ESCRITURA 1245", valor: 2450, tipo: "credito", status: "pendente" },
-  { id: 2, data: "29/01/2024", descricao: "PAG FORNECEDOR PAPEL A4", valor: -380, tipo: "debito", status: "conciliado" },
-  { id: 3, data: "28/01/2024", descricao: "PIX RECEBIDO - PROCURACAO", valor: 185, tipo: "credito", status: "pendente" },
-  { id: 4, data: "28/01/2024", descricao: "DEB AUT ENERGIA ELETRICA", valor: -890, tipo: "debito", status: "divergente" },
-  { id: 5, data: "27/01/2024", descricao: "TED RECEBIDA - TESTAMENTO", valor: 850, tipo: "credito", status: "conciliado" },
-  { id: 6, data: "27/01/2024", descricao: "PAG ALUGUEL JAN/2024", valor: -4500, tipo: "debito", status: "pendente" },
-  { id: 7, data: "26/01/2024", descricao: "DIVERSOS RECEBIMENTOS", valor: 750, tipo: "credito", status: "pendente" },
-  { id: 8, data: "26/01/2024", descricao: "FOLHA PAGAMENTO JAN", valor: -18500, tipo: "debito", status: "conciliado" },
-];
-
-// Mock data - Lançamentos do sistema
-const lancamentoItems = [
-  { id: 1, data: "29/01/2024", descricao: "Escritura de Compra e Venda - Lote 45", valor: 2450, tipo: "receita", status: "pendente" },
-  { id: 2, data: "29/01/2024", descricao: "Pagamento Fornecedor - Papel A4", valor: 380, tipo: "despesa", status: "conciliado" },
-  { id: 3, data: "28/01/2024", descricao: "Procuração Pública - Processo 12345", valor: 185, tipo: "receita", status: "pendente" },
-  { id: 4, data: "28/01/2024", descricao: "Energia Elétrica - Janeiro", valor: 920, tipo: "despesa", status: "divergente" },
-  { id: 5, data: "27/01/2024", descricao: "Testamento Público - Cliente João", valor: 850, tipo: "receita", status: "conciliado" },
-  { id: 6, data: "27/01/2024", descricao: "Aluguel do Imóvel", valor: 4500, tipo: "despesa", status: "pendente" },
-  { id: 7, data: "26/01/2024", descricao: "Reconhecimento de Firma (50 unidades)", valor: 750, tipo: "receita", status: "pendente" },
-  { id: 8, data: "26/01/2024", descricao: "Folha de Pagamento", valor: 18500, tipo: "despesa", status: "conciliado" },
-];
+import {
+  useContasBancarias,
+  useExtratoItensByConta,
+  useLancamentos,
+  useVincularConciliacao,
+  useDesvincularConciliacao,
+  ExtratoItem,
+  Lancamento,
+} from "@/hooks/useConciliacao";
+import { format, parseISO } from "date-fns";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat("pt-BR", {
@@ -76,13 +61,76 @@ const statusLabels = {
 };
 
 export default function Conciliacao() {
-  const [selectedExtrato, setSelectedExtrato] = useState<number | null>(null);
-  const [selectedLancamento, setSelectedLancamento] = useState<number | null>(null);
+  const { data: contas, isLoading: loadingContas } = useContasBancarias();
+  const { data: lancamentos, isLoading: loadingLancamentos } = useLancamentos();
+  const vincular = useVincularConciliacao();
+  const desvincular = useDesvincularConciliacao();
 
-  const conciliadosCount = extratoItems.filter((i) => i.status === "conciliado").length;
-  const pendentesCount = extratoItems.filter((i) => i.status === "pendente").length;
-  const divergentesCount = extratoItems.filter((i) => i.status === "divergente").length;
-  const taxaConciliacao = Math.round((conciliadosCount / extratoItems.length) * 100);
+  const [selectedContaId, setSelectedContaId] = useState<string | undefined>();
+  const [selectedExtrato, setSelectedExtrato] = useState<string | null>(null);
+  const [selectedLancamento, setSelectedLancamento] = useState<string | null>(null);
+
+  const { data: extratoItens, isLoading: loadingExtrato } = useExtratoItensByConta(selectedContaId);
+
+  const contaAtiva = contas?.find((c) => c.id === selectedContaId);
+
+  // Calcular estatísticas
+  const stats = useMemo(() => {
+    const itens = extratoItens || [];
+    const conciliados = itens.filter((i) => i.status_conciliacao === "conciliado").length;
+    const pendentes = itens.filter((i) => i.status_conciliacao === "pendente").length;
+    const divergentes = itens.filter((i) => i.status_conciliacao === "divergente").length;
+    const total = itens.length;
+
+    return {
+      conciliados,
+      pendentes,
+      divergentes,
+      taxaConciliacao: total > 0 ? Math.round((conciliados / total) * 100) : 0,
+    };
+  }, [extratoItens]);
+
+  // Filtrar lançamentos pendentes
+  const lancamentosPendentes = useMemo(() => {
+    return (lancamentos || []).filter((l) => l.status_conciliacao === "pendente");
+  }, [lancamentos]);
+
+  const handleVincular = () => {
+    if (selectedExtrato && selectedLancamento) {
+      const extratoItem = extratoItens?.find((e) => e.id === selectedExtrato);
+      const lancamento = lancamentos?.find((l) => l.id === selectedLancamento);
+
+      if (extratoItem && lancamento) {
+        const diferenca = Math.abs(Number(extratoItem.valor)) - Number(lancamento.valor);
+
+        vincular.mutate(
+          {
+            extratoItemId: selectedExtrato,
+            lancamentoId: selectedLancamento,
+            diferenca,
+          },
+          {
+            onSuccess: () => {
+              setSelectedExtrato(null);
+              setSelectedLancamento(null);
+            },
+          }
+        );
+      }
+    }
+  };
+
+  const isLoading = loadingContas || loadingLancamentos;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -91,19 +139,21 @@ export default function Conciliacao() {
         description="Compare extratos bancários com lançamentos do sistema"
       >
         <div className="flex items-center gap-2">
-          <Select defaultValue="bb">
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Conta Bancária" />
+          <Select value={selectedContaId} onValueChange={setSelectedContaId}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Selecione uma conta" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="bb">Banco do Brasil - 1234-5</SelectItem>
-              <SelectItem value="itau">Itaú - 5678-9</SelectItem>
-              <SelectItem value="caixa">Caixa - 9012-3</SelectItem>
+              {contas?.filter((c) => c.ativo).map((conta) => (
+                <SelectItem key={conta.id} value={conta.id}>
+                  {conta.banco} - {conta.conta}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="outline">
             <Calendar className="w-4 h-4 mr-2" />
-            Janeiro 2024
+            Período
           </Button>
           <Button>
             <RefreshCw className="w-4 h-4 mr-2" />
@@ -123,7 +173,7 @@ export default function Conciliacao() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Conciliados</p>
-                  <p className="text-2xl font-bold text-success">{conciliadosCount}</p>
+                  <p className="text-2xl font-bold text-success">{stats.conciliados}</p>
                 </div>
               </div>
             </CardContent>
@@ -137,7 +187,7 @@ export default function Conciliacao() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pendentes</p>
-                  <p className="text-2xl font-bold text-warning">{pendentesCount}</p>
+                  <p className="text-2xl font-bold text-warning">{stats.pendentes}</p>
                 </div>
               </div>
             </CardContent>
@@ -151,7 +201,7 @@ export default function Conciliacao() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Divergentes</p>
-                  <p className="text-2xl font-bold text-destructive">{divergentesCount}</p>
+                  <p className="text-2xl font-bold text-destructive">{stats.divergentes}</p>
                 </div>
               </div>
             </CardContent>
@@ -165,157 +215,205 @@ export default function Conciliacao() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Taxa de Conciliação</p>
-                  <p className="text-2xl font-bold text-primary">{taxaConciliacao}%</p>
+                  <p className="text-2xl font-bold text-primary">{stats.taxaConciliacao}%</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Painel de Conciliação */}
-        <Card className="flex-1">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Comparativo de Lançamentos</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filtros
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={!selectedExtrato || !selectedLancamento}
-                >
-                  <Link2 className="w-4 h-4 mr-2" />
-                  Vincular Selecionados
-                </Button>
+        {!selectedContaId ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <ArrowRightLeft className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Selecione uma conta bancária</h3>
+              <p className="text-muted-foreground">
+                Escolha uma conta no menu acima para iniciar a conciliação.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Painel de Conciliação */
+          <Card className="flex-1">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Comparativo de Lançamentos</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm">
+                    <Filter className="w-4 h-4 mr-2" />
+                    Filtros
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
+                    onClick={handleVincular}
+                  >
+                    {vincular.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Link2 className="w-4 h-4 mr-2" />
+                    )}
+                    Vincular Selecionados
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
-              {/* Extrato Bancário */}
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full flex flex-col">
-                  <div className="p-3 border-b bg-muted/30">
-                    <h3 className="font-semibold text-sm flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-secondary" />
-                      Extrato Bancário
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Banco do Brasil - Ag: 1234 / CC: 56789-0
-                    </p>
-                  </div>
-                  <ScrollArea className="flex-1">
-                    <div className="p-2 space-y-1">
-                      {extratoItems.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => setSelectedExtrato(selectedExtrato === item.id ? null : item.id)}
-                          className={cn(
-                            "p-3 rounded-lg border cursor-pointer transition-all",
-                            selectedExtrato === item.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "hover:bg-muted/50"
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {item.descricao}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {item.data}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p
-                                className={cn(
-                                  "text-sm font-semibold",
-                                  item.valor > 0 ? "text-success" : "text-destructive"
-                                )}
-                              >
-                                {item.valor > 0 ? "+" : "-"}
-                                {formatCurrency(item.valor)}
-                              </p>
-                              <Badge
-                                variant="outline"
-                                className={cn("text-xs mt-1", statusStyles[item.status as keyof typeof statusStyles])}
-                              >
-                                {statusLabels[item.status as keyof typeof statusLabels]}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+            </CardHeader>
+            <CardContent>
+              <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
+                {/* Extrato Bancário */}
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <div className="h-full flex flex-col">
+                    <div className="p-3 border-b bg-muted/30">
+                      <h3 className="font-semibold text-sm flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-secondary" />
+                        Extrato Bancário
+                      </h3>
+                      {contaAtiva && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {contaAtiva.banco} - Ag: {contaAtiva.agencia} / CC: {contaAtiva.conta}
+                        </p>
+                      )}
                     </div>
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle withHandle />
-
-              {/* Lançamentos do Sistema */}
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full flex flex-col">
-                  <div className="p-3 border-b bg-muted/30">
-                    <h3 className="font-semibold text-sm flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
-                      Lançamentos do Sistema
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Registros financeiros do FinCart
-                    </p>
-                  </div>
-                  <ScrollArea className="flex-1">
-                    <div className="p-2 space-y-1">
-                      {lancamentoItems.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => setSelectedLancamento(selectedLancamento === item.id ? null : item.id)}
-                          className={cn(
-                            "p-3 rounded-lg border cursor-pointer transition-all",
-                            selectedLancamento === item.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "hover:bg-muted/50"
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {item.descricao}
-                              </p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {item.data}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p
-                                className={cn(
-                                  "text-sm font-semibold",
-                                  item.tipo === "receita" ? "text-success" : "text-destructive"
-                                )}
-                              >
-                                {item.tipo === "receita" ? "+" : "-"}
-                                {formatCurrency(item.valor)}
-                              </p>
-                              <Badge
-                                variant="outline"
-                                className={cn("text-xs mt-1", statusStyles[item.status as keyof typeof statusStyles])}
-                              >
-                                {statusLabels[item.status as keyof typeof statusLabels]}
-                              </Badge>
-                            </div>
+                    <ScrollArea className="flex-1">
+                      <div className="p-2 space-y-1">
+                        {loadingExtrato ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                           </div>
-                        </div>
-                      ))}
+                        ) : extratoItens && extratoItens.length > 0 ? (
+                          extratoItens.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() =>
+                                item.status_conciliacao === "pendente" &&
+                                setSelectedExtrato(selectedExtrato === item.id ? null : item.id)
+                              }
+                              className={cn(
+                                "p-3 rounded-lg border transition-all",
+                                item.status_conciliacao === "pendente"
+                                  ? "cursor-pointer"
+                                  : "cursor-default opacity-60",
+                                selectedExtrato === item.id
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                  : item.status_conciliacao === "pendente"
+                                  ? "hover:bg-muted/50"
+                                  : ""
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {item.descricao}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(parseISO(item.data_transacao), "dd/MM/yyyy")}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p
+                                    className={cn(
+                                      "text-sm font-semibold",
+                                      item.tipo === "credito" ? "text-success" : "text-destructive"
+                                    )}
+                                  >
+                                    {item.tipo === "credito" ? "+" : "-"}
+                                    {formatCurrency(Number(item.valor))}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn("text-xs mt-1", statusStyles[item.status_conciliacao])}
+                                  >
+                                    {statusLabels[item.status_conciliacao]}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <p className="text-sm">Nenhum item de extrato encontrado.</p>
+                            <p className="text-xs mt-1">Importe um extrato para esta conta.</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </ResizablePanel>
+
+                <ResizableHandle withHandle />
+
+                {/* Lançamentos do Sistema */}
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <div className="h-full flex flex-col">
+                    <div className="p-3 border-b bg-muted/30">
+                      <h3 className="font-semibold text-sm flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                        Lançamentos do Sistema
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {lancamentosPendentes.length} lançamentos pendentes
+                      </p>
                     </div>
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </CardContent>
-        </Card>
+                    <ScrollArea className="flex-1">
+                      <div className="p-2 space-y-1">
+                        {lancamentosPendentes.length > 0 ? (
+                          lancamentosPendentes.map((item) => (
+                            <div
+                              key={item.id}
+                              onClick={() =>
+                                setSelectedLancamento(selectedLancamento === item.id ? null : item.id)
+                              }
+                              className={cn(
+                                "p-3 rounded-lg border cursor-pointer transition-all",
+                                selectedLancamento === item.id
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                  : "hover:bg-muted/50"
+                              )}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">
+                                    {item.descricao}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {format(parseISO(item.data), "dd/MM/yyyy")}
+                                    {item.categoria && ` • ${item.categoria}`}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p
+                                    className={cn(
+                                      "text-sm font-semibold",
+                                      item.tipo === "receita" ? "text-success" : "text-destructive"
+                                    )}
+                                  >
+                                    {item.tipo === "receita" ? "+" : "-"}
+                                    {formatCurrency(Number(item.valor))}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn("text-xs mt-1", statusStyles[item.status_conciliacao])}
+                                  >
+                                    {statusLabels[item.status_conciliacao]}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <p className="text-sm">Nenhum lançamento pendente.</p>
+                            <p className="text-xs mt-1">Todos os lançamentos foram conciliados.</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </MainLayout>
   );

@@ -9,6 +9,7 @@ import {
   Download,
   Calendar,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -30,63 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { ImportarExtratoDialog } from "@/components/extratos/ImportarExtratoDialog";
-
-const extratosImportados = [
-  {
-    id: 1,
-    arquivo: "extrato_bb_jan2024.ofx",
-    banco: "Banco do Brasil",
-    conta: "56789-0",
-    periodo: "01/01/2024 - 31/01/2024",
-    lancamentos: 156,
-    conciliados: 142,
-    pendentes: 12,
-    divergentes: 2,
-    dataImportacao: "29/01/2024 14:30",
-    status: "processado",
-  },
-  {
-    id: 2,
-    arquivo: "extrato_itau_jan2024.csv",
-    banco: "Itaú Unibanco",
-    conta: "12345-6",
-    periodo: "01/01/2024 - 28/01/2024",
-    lancamentos: 89,
-    conciliados: 85,
-    pendentes: 4,
-    divergentes: 0,
-    dataImportacao: "28/01/2024 16:45",
-    status: "processado",
-  },
-  {
-    id: 3,
-    arquivo: "extrato_caixa_jan2024.ofx",
-    banco: "Caixa Econômica",
-    conta: "34567-8",
-    periodo: "01/01/2024 - 27/01/2024",
-    lancamentos: 45,
-    conciliados: 45,
-    pendentes: 0,
-    divergentes: 0,
-    dataImportacao: "27/01/2024 10:00",
-    status: "conciliado",
-  },
-  {
-    id: 4,
-    arquivo: "extrato_santander_dez2023.ofx",
-    banco: "Santander",
-    conta: "78901-2",
-    periodo: "01/12/2023 - 31/12/2023",
-    lancamentos: 78,
-    conciliados: 78,
-    pendentes: 0,
-    divergentes: 0,
-    dataImportacao: "02/01/2024 09:15",
-    status: "conciliado",
-  },
-];
+import { useExtratos, useContasBancarias } from "@/hooks/useConciliacao";
+import { format, parseISO } from "date-fns";
 
 const statusStyles = {
   processado: "pendente",
@@ -101,24 +48,24 @@ const statusLabels = {
 };
 
 export default function Extratos() {
-  const [extratos, setExtratos] = useState(extratosImportados);
+  const { data: extratos, isLoading: loadingExtratos } = useExtratos();
+  const { data: contas } = useContasBancarias();
 
   const handleImportSuccess = (data: any[], banco: string, conta: string) => {
-    const novoExtrato = {
-      id: extratos.length + 1,
-      arquivo: `extrato_import_${Date.now()}.ofx`,
-      banco,
-      conta,
-      periodo: "01/01/2024 - 31/01/2024",
-      lancamentos: data.length,
-      conciliados: 0,
-      pendentes: data.length,
-      divergentes: 0,
-      dataImportacao: new Date().toLocaleString("pt-BR"),
-      status: "processado",
-    };
-    setExtratos([novoExtrato, ...extratos]);
+    // O hook já invalida o cache automaticamente
   };
+
+  if (loadingExtratos) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  const extratosData = extratos || [];
 
   return (
     <MainLayout>
@@ -133,10 +80,11 @@ export default function Extratos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os Bancos</SelectItem>
-              <SelectItem value="bb">Banco do Brasil</SelectItem>
-              <SelectItem value="itau">Itaú Unibanco</SelectItem>
-              <SelectItem value="caixa">Caixa Econômica</SelectItem>
-              <SelectItem value="santander">Santander</SelectItem>
+              {contas?.map((conta) => (
+                <SelectItem key={conta.id} value={conta.id}>
+                  {conta.banco}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <Button variant="outline">
@@ -148,7 +96,6 @@ export default function Extratos() {
       </PageHeader>
 
       <div className="flex-1 p-6 space-y-6">
-
         {/* Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
@@ -159,7 +106,7 @@ export default function Extratos() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Extratos Importados</p>
-                  <p className="text-2xl font-bold">{extratos.length}</p>
+                  <p className="text-2xl font-bold">{extratosData.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -174,7 +121,7 @@ export default function Extratos() {
                 <div>
                   <p className="text-sm text-muted-foreground">Totalmente Conciliados</p>
                   <p className="text-2xl font-bold text-success">
-                    {extratos.filter((e) => e.status === "conciliado").length}
+                    {extratosData.filter((e) => e.status === "conciliado").length}
                   </p>
                 </div>
               </div>
@@ -190,7 +137,7 @@ export default function Extratos() {
                 <div>
                   <p className="text-sm text-muted-foreground">Em Processamento</p>
                   <p className="text-2xl font-bold text-warning">
-                    {extratos.filter((e) => e.status === "processado").length}
+                    {extratosData.filter((e) => e.status === "processado").length}
                   </p>
                 </div>
               </div>
@@ -204,9 +151,9 @@ export default function Extratos() {
                   <AlertCircle className="w-5 h-5 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Com Divergências</p>
+                  <p className="text-sm text-muted-foreground">Com Erros</p>
                   <p className="text-2xl font-bold text-destructive">
-                    {extratos.filter((e) => e.divergentes > 0).length}
+                    {extratosData.filter((e) => e.status === "erro").length}
                   </p>
                 </div>
               </div>
@@ -226,79 +173,83 @@ export default function Extratos() {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Arquivo</TableHead>
-                  <TableHead>Banco / Conta</TableHead>
-                  <TableHead>Período</TableHead>
-                  <TableHead className="text-center">Lançamentos</TableHead>
-                  <TableHead className="text-center">Conciliados</TableHead>
-                  <TableHead className="text-center">Pendentes</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Importado em</TableHead>
-                  <TableHead className="w-24"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {extratos.map((extrato) => (
-                  <TableRow key={extrato.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="w-4 h-4 text-primary" />
-                        <span className="font-medium text-sm">{extrato.arquivo}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{extrato.banco}</p>
-                        <p className="text-xs text-muted-foreground">{extrato.conta}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {extrato.periodo}
-                    </TableCell>
-                    <TableCell className="text-center font-medium">
-                      {extrato.lancamentos}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span className="text-success font-medium">{extrato.conciliados}</span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {extrato.pendentes > 0 ? (
-                        <span className="text-warning font-medium">{extrato.pendentes}</span>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={statusStyles[extrato.status as keyof typeof statusStyles]}
-                      >
-                        {statusLabels[extrato.status as keyof typeof statusLabels]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {extrato.dataImportacao}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {extratosData.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Arquivo</TableHead>
+                    <TableHead>Banco / Conta</TableHead>
+                    <TableHead>Período</TableHead>
+                    <TableHead className="text-center">Lançamentos</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Importado em</TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {extratosData.map((extrato) => (
+                    <TableRow key={extrato.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <FileSpreadsheet className="w-4 h-4 text-primary" />
+                          <span className="font-medium text-sm">{extrato.arquivo}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">
+                            {extrato.conta_bancaria?.banco || "N/A"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {extrato.conta_bancaria?.conta || "N/A"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(parseISO(extrato.periodo_inicio), "dd/MM/yyyy")} -{" "}
+                        {format(parseISO(extrato.periodo_fim), "dd/MM/yyyy")}
+                      </TableCell>
+                      <TableCell className="text-center font-medium">
+                        {extrato.total_lancamentos}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={statusStyles[extrato.status as keyof typeof statusStyles]}
+                        >
+                          {statusLabels[extrato.status as keyof typeof statusLabels] || extrato.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(parseISO(extrato.created_at), "dd/MM/yyyy HH:mm")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="py-12 text-center">
+                <FileSpreadsheet className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Nenhum extrato importado</h3>
+                <p className="text-muted-foreground mb-4">
+                  Importe seu primeiro extrato bancário para iniciar a conciliação.
+                </p>
+                <ImportarExtratoDialog onImportSuccess={handleImportSuccess} />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
