@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -33,18 +31,14 @@ import { Switch } from "@/components/ui/switch";
 import { Plus, Landmark, Loader2 } from "lucide-react";
 import { useCreateContaBancaria, TipoConta } from "@/hooks/useConciliacao";
 
-const formSchema = z.object({
-  banco: z.string().min(1, "Selecione o banco"),
-  agencia: z.string().min(1, "Informe a agência").max(10, "Agência inválida"),
-  conta: z.string().min(1, "Informe a conta").max(20, "Conta inválida"),
-  tipo: z.enum(["corrente", "poupanca", "investimento"], {
-    required_error: "Selecione o tipo de conta",
-  }),
-  saldoInicial: z.string().optional(),
-  ativo: z.boolean().default(true),
-});
-
-type FormData = z.infer<typeof formSchema>;
+interface FormData {
+  banco: string;
+  agencia: string;
+  conta: string;
+  tipo: TipoConta;
+  saldoInicial: string;
+  ativo: boolean;
+}
 
 const bancos = [
   { codigo: "001", nome: "Banco do Brasil" },
@@ -72,7 +66,6 @@ export function NovaContaDialog() {
   const createConta = useCreateContaBancaria();
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
     defaultValues: {
       banco: "",
       agencia: "",
@@ -83,7 +76,21 @@ export function NovaContaDialog() {
     },
   });
 
+  const validateForm = (data: FormData): string | null => {
+    if (!data.banco) return "Selecione o banco";
+    if (!data.agencia || data.agencia.length > 10) return "Informe uma agência válida";
+    if (!data.conta || data.conta.length > 20) return "Informe uma conta válida";
+    if (!data.tipo) return "Selecione o tipo de conta";
+    return null;
+  };
+
   const onSubmit = (data: FormData) => {
+    const error = validateForm(data);
+    if (error) {
+      form.setError("root", { message: error });
+      return;
+    }
+
     const saldoInicial = data.saldoInicial
       ? parseFloat(data.saldoInicial.replace(/\./g, "").replace(",", "."))
       : 0;
@@ -250,6 +257,10 @@ export function NovaContaDialog() {
                 </FormItem>
               )}
             />
+
+            {form.formState.errors.root && (
+              <p className="text-sm text-destructive">{form.formState.errors.root.message}</p>
+            )}
 
             <DialogFooter className="pt-4">
               <Button
