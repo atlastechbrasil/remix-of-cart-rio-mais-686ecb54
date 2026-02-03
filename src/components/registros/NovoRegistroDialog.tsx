@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -33,21 +31,19 @@ import {
 import { Plus, FileText } from "lucide-react";
 import { toast } from "sonner";
 
-const formSchema = z.object({
-  matricula: z.string().min(1, "Informe a matrícula"),
-  tipo: z.string().min(1, "Selecione o tipo de registro"),
-  livro: z.string().min(1, "Informe o livro"),
-  folha: z.string().min(1, "Informe a folha"),
-  parteTransmitente: z.string().optional(),
-  parteAdquirente: z.string().optional(),
-  descricaoImovel: z.string().optional(),
-  valor: z.string().optional(),
-  taxa: z.string().optional(),
-  responsavel: z.string().min(1, "Selecione o responsável"),
-  observacoes: z.string().optional(),
-});
-
-type FormData = z.infer<typeof formSchema>;
+interface FormData {
+  matricula: string;
+  tipo: string;
+  livro: string;
+  folha: string;
+  parteTransmitente: string;
+  parteAdquirente: string;
+  descricaoImovel: string;
+  valor: string;
+  taxa: string;
+  responsavel: string;
+  observacoes: string;
+}
 
 const tiposRegistro = [
   { value: "registro", label: "Registro" },
@@ -82,7 +78,6 @@ export function NovoRegistroDialog({ onRegistroCriado }: NovoRegistroDialogProps
   const [open, setOpen] = useState(false);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
     defaultValues: {
       matricula: "",
       tipo: "",
@@ -101,6 +96,27 @@ export function NovoRegistroDialog({ onRegistroCriado }: NovoRegistroDialogProps
   const tipoSelecionado = form.watch("tipo");
 
   const onSubmit = (data: FormData) => {
+    if (!data.matricula) {
+      form.setError("matricula", { message: "Informe a matrícula" });
+      return;
+    }
+    if (!data.tipo) {
+      form.setError("tipo", { message: "Selecione o tipo de registro" });
+      return;
+    }
+    if (!data.livro) {
+      form.setError("livro", { message: "Informe o livro" });
+      return;
+    }
+    if (!data.folha) {
+      form.setError("folha", { message: "Informe a folha" });
+      return;
+    }
+    if (!data.responsavel) {
+      form.setError("responsavel", { message: "Selecione o responsável" });
+      return;
+    }
+
     console.log("Novo registro:", data);
     toast.success("Registro criado com sucesso!");
     onRegistroCriado?.(data);

@@ -201,7 +201,6 @@ export default function Relatorios() {
                           paddingAngle={2}
                           dataKey="valor"
                           nameKey="nome"
-                          label={({ nome, porcentagem }) => `${nome}: ${porcentagem}%`}
                         >
                           {receitasPorAto.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
