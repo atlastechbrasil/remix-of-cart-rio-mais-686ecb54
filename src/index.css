@@ -124,45 +124,66 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
 
 @layer utilities {
   .glass-card {
-    @apply bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm;
+    background-color: hsl(var(--card) / 0.8);
+    backdrop-filter: blur(4px);
+    border: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
 
   .stat-card {
-    @apply bg-card rounded-lg border border-border p-5 transition-all duration-200 hover:shadow-md hover:border-primary/20;
+    background-color: hsl(var(--card));
+    border-radius: var(--radius);
+    border: 1px solid hsl(var(--border));
+    padding: 1.25rem;
+    transition: all 0.2s;
+  }
+
+  .stat-card:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    border-color: hsl(var(--primary) / 0.2);
   }
 
   .gradient-primary {
-    @apply bg-gradient-to-r from-primary to-secondary;
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--secondary)));
   }
 
   .gradient-success {
-    @apply bg-gradient-to-r from-success to-success/80;
+    background: linear-gradient(to right, hsl(var(--success)), hsl(var(--success) / 0.8));
   }
 
   .gradient-warning {
-    @apply bg-gradient-to-r from-warning to-warning/80;
+    background: linear-gradient(to right, hsl(var(--warning)), hsl(var(--warning) / 0.8));
   }
 
   .conciliado {
-    @apply bg-success/10 text-success border-success/20;
+    background-color: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
+    border-color: hsl(var(--success) / 0.2);
   }
 
   .pendente {
-    @apply bg-warning/10 text-warning border-warning/20;
+    background-color: hsl(var(--warning) / 0.1);
+    color: hsl(var(--warning));
+    border-color: hsl(var(--warning) / 0.2);
   }
 
   .divergente {
-    @apply bg-destructive/10 text-destructive border-destructive/20;
+    background-color: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive) / 0.2);
   }
 }
