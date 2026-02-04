@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { toast } from "sonner";
 
 // Types based on database schema
@@ -81,15 +82,21 @@ export interface Conciliacao {
 // Hook para Contas Bancárias
 export function useContasBancarias() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["contas-bancarias", user?.id],
+    queryKey: ["contas-bancarias", user?.id, cartorioAtivo?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("contas_bancarias")
         .select("*")
         .order("banco", { ascending: true });
 
+      if (cartorioAtivo) {
+        query = query.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as ContaBancaria[];
     },
@@ -100,12 +107,17 @@ export function useContasBancarias() {
 export function useCreateContaBancaria() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useMutation({
     mutationFn: async (conta: Omit<ContaBancaria, "id" | "user_id" | "created_at" | "updated_at">) => {
       const { data, error } = await supabase
         .from("contas_bancarias")
-        .insert({ ...conta, user_id: user!.id })
+        .insert({ 
+          ...conta, 
+          user_id: user!.id,
+          cartorio_id: cartorioAtivo?.id || null,
+        })
         .select()
         .single();
 
@@ -172,18 +184,24 @@ export function useDeleteContaBancaria() {
 // Hook para Extratos
 export function useExtratos() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["extratos", user?.id],
+    queryKey: ["extratos", user?.id, cartorioAtivo?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("extratos")
         .select(`
           *,
           conta_bancaria:contas_bancarias(*)
         `)
         .order("created_at", { ascending: false });
+      
+      if (cartorioAtivo) {
+        query = query.eq("cartorio_id", cartorioAtivo.id);
+      }
 
+      const { data, error } = await query;
       if (error) throw error;
       return data as (Extrato & { conta_bancaria: ContaBancaria })[];
     },
@@ -194,12 +212,17 @@ export function useExtratos() {
 export function useCreateExtrato() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useMutation({
     mutationFn: async (extrato: Omit<Extrato, "id" | "user_id" | "created_at">) => {
       const { data, error } = await supabase
         .from("extratos")
-        .insert({ ...extrato, user_id: user!.id })
+        .insert({ 
+          ...extrato, 
+          user_id: user!.id,
+          cartorio_id: cartorioAtivo?.id || null,
+        })
         .select()
         .single();
 
@@ -298,15 +321,21 @@ export function useCreateExtratoItens() {
 // Hook para Lançamentos
 export function useLancamentos() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["lancamentos", user?.id],
+    queryKey: ["lancamentos", user?.id, cartorioAtivo?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("lancamentos")
         .select("*")
         .order("data", { ascending: false });
+      
+      if (cartorioAtivo) {
+        query = query.eq("cartorio_id", cartorioAtivo.id);
+      }
 
+      const { data, error } = await query;
       if (error) throw error;
       return data as Lancamento[];
     },
@@ -317,12 +346,17 @@ export function useLancamentos() {
 export function useCreateLancamento() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useMutation({
     mutationFn: async (lancamento: Omit<Lancamento, "id" | "user_id" | "created_at" | "updated_at">) => {
       const { data, error } = await supabase
         .from("lancamentos")
-        .insert({ ...lancamento, user_id: user!.id })
+        .insert({ 
+          ...lancamento, 
+          user_id: user!.id,
+          cartorio_id: cartorioAtivo?.id || null,
+        })
         .select()
         .single();
 
