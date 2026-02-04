@@ -1,362 +1,326 @@
 
-# Plano: Sistema Multi-Tenant com Dados Reais e Perfis de Acesso
+# Plano: Sistema Multi-Tenant com Perfis de Acesso
 
-## Resumo da Situacao Atual
+## Visão Geral
 
-O banco de dados ja possui a estrutura multi-tenant parcialmente implementada:
-- Tabela `cartorios` com 1 cartorio de demonstracao
-- Tabela `user_roles` com alex@atlastechbrasil.com como super_admin
-- Tabela `cartorio_usuarios` (vazia - sem vinculos)
-- Funcoes de seguranca (`has_role`, `is_super_admin`, `user_can_access_cartorio`) ja criadas
-- Coluna `cartorio_id` ja existe nas tabelas de dados
+Este plano implementa um sistema completo de multi-tenant onde:
+- Cada **cartório** (tenant) terá seus dados isolados
+- **Administradores globais** poderão alternar entre cartórios
+- Usuários terão **perfis de acesso personalizáveis** com permissões granulares
+- A tela de Usuários exibirá dados reais do banco de dados
 
-**Usuario peterson@atlastechbrasil.com ainda nao esta registrado no sistema.**
+## Correção Prévia: Dependências Faltando
 
----
-
-## Parte 1: Corrigir Erros de Build (Prioritario)
-
-### 1.1 Restaurar Dependencias Faltantes
-
-O `package.json` esta incompleto. Sera necessario adicionar:
-
-```text
-Dependencias de Producao:
-- lucide-react
-- react-hook-form, @hookform/resolvers, zod
-- recharts
-- sonner
-- date-fns
-- cmdk, vaul, embla-carousel-react, input-otp
-- class-variance-authority, clsx, tailwind-merge
-- @supabase/supabase-js
-- Componentes Radix UI (@radix-ui/react-*)
-- tailwindcss-animate
-
-Dependencias de Desenvolvimento:
-- typescript, @types/react, @types/react-dom
-- @types/node, eslint, globals, typescript-eslint
-- vitest, @testing-library/react, jsdom
-```
-
-### 1.2 Corrigir CSS do Tailwind v4
-
-O Tailwind v4 requer sintaxe diferente. O arquivo `src/index.css` precisa ser atualizado:
-
-```text
-Antes (nao funciona no v4):
-@layer base {
-  * {
-    @apply border-border;
-  }
-}
-
-Depois (compativel com v4):
-@layer base {
-  * {
-    border-color: hsl(var(--border));
-  }
-}
-```
+Antes de implementar as funcionalidades, será necessário corrigir os erros de build restaurando as dependências faltantes no `package.json`:
+- lucide-react, react-hook-form, zod, @hookform/resolvers, recharts, sonner, date-fns, cmdk, vaul, embla-carousel-react, input-otp
+- Componentes Radix UI (@radix-ui/*)
+- class-variance-authority, @supabase/supabase-js
 
 ---
 
-## Parte 2: TenantContext - Gerenciamento Global
+## Parte 1: Estrutura do Banco de Dados
 
-### 2.1 Criar Contexto de Tenant
-
-Arquivo: `src/contexts/TenantContext.tsx`
+### 1.1 Criar Tabela de Cartórios (Tenants)
 
 ```text
-Funcionalidades:
-- Buscar cartorios disponiveis para o usuario
-- Carregar cartorio ativo do profile (cartorio_ativo_id)
-- Permitir alternar entre cartorios (super_admins)
-- Verificar se usuario e super_admin
-- Persistir selecao no banco de dados
++------------------+
+|    cartorios     |
++------------------+
+| id (uuid)        |
+| nome             |
+| cnpj             |
+| endereco         |
+| telefone         |
+| email            |
+| ativo            |
+| created_at       |
+| updated_at       |
++------------------+
 ```
 
-Fluxo de inicializacao:
-```text
-1. Verificar se usuario e super_admin
-   -> Se sim: buscar todos os cartorios
-   -> Se nao: buscar apenas cartorios vinculados
+### 1.2 Criar Sistema de Roles (Funções)
 
-2. Carregar cartorio_ativo_id do profile
-   -> Se existir: usar como cartorio ativo
-   -> Se nao: usar primeiro cartorio disponivel
-
-3. Prover cartorioAtivo para toda a aplicacao
-```
-
-### 2.2 Integrar no App.tsx
-
-Envolver a aplicacao com `TenantProvider` apos `AuthProvider`:
+Seguindo as melhores práticas de segurança, os roles serão armazenados em tabela separada:
 
 ```text
-<AuthProvider>
-  <TenantProvider>
-    ...aplicacao
-  </TenantProvider>
-</AuthProvider>
++------------------------+
+|  app_role (enum)       |
++------------------------+
+| super_admin            | -> Acesso a todos os cartórios
+| admin                  | -> Administrador do cartório
+| financeiro             | -> Acesso financeiro
+| operacional            | -> Acesso básico
++------------------------+
+
++------------------+
+|   user_roles     |
++------------------+
+| id               |
+| user_id          |
+| role             |
+| created_at       |
++------------------+
 ```
+
+### 1.3 Criar Tabela de Permissões por Cartório
+
+```text
++---------------------+
+| cartorio_usuarios   |
++---------------------+
+| id                  |
+| cartorio_id         |
+| user_id             |
+| role (app_role)     |
+| ativo               |
+| created_at          |
+| updated_at          |
++---------------------+
+```
+
+### 1.4 Criar Tabela de Perfis Personalizáveis
+
+```text
++---------------------+
+|   perfis_acesso     |
++---------------------+
+| id                  |
+| cartorio_id         |
+| nome                |
+| descricao           |
+| permissoes (jsonb)  |
+| cor                 |
+| created_at          |
+| updated_at          |
++---------------------+
+```
+
+### 1.5 Atualizar Tabelas Existentes
+
+Adicionar `cartorio_id` em todas as tabelas de dados:
+- `contas_bancarias`
+- `extratos`
+- `extrato_itens`
+- `lancamentos`
+- `conciliacoes`
 
 ---
 
-## Parte 3: Seletor de Cartorio no Sidebar
+## Parte 2: Políticas de Segurança (RLS)
 
-### 3.1 Atualizar AppSidebar.tsx
+### 2.1 Função de Verificação de Acesso
 
-Para super_admins, adicionar dropdown abaixo do logo:
+Criar função `SECURITY DEFINER` para verificar permissões sem recursão:
 
-```text
-+---------------------------+
-|        [FinCart Logo]     |
-+---------------------------+
-| [Dropdown Cartorio]    v  |  <- Novo componente
-+---------------------------+
-|  Dashboard               |
-|  Conciliacao Bancaria    |
-|  ...                     |
-+---------------------------+
+```sql
+-- Verifica se usuário tem role específico
+CREATE FUNCTION has_role(user_id uuid, role app_role)
+
+-- Verifica se usuário pertence a um cartório
+CREATE FUNCTION user_belongs_to_cartorio(user_id uuid, cartorio_id uuid)
+
+-- Retorna cartório ativo do usuário (para contexto)
+CREATE FUNCTION get_user_active_cartorio(user_id uuid)
 ```
 
-Comportamento:
-- Mostrar nome do cartorio ativo
-- Click abre lista de cartorios disponiveis
-- Selecionar cartorio atualiza contexto global
-- Apenas visivel para super_admins
+### 2.2 Atualizar RLS das Tabelas
+
+Modificar políticas para filtrar por `cartorio_id`:
+- Super admins: acesso a todos os cartórios
+- Usuários normais: apenas cartórios vinculados
 
 ---
 
-## Parte 4: Atualizar Hooks para Multi-Tenant
+## Parte 3: Contexto de Tenant no Frontend
 
-### 4.1 Modificar Todos os Hooks de Dados
-
-Atualizar para incluir `cartorio_id` do contexto:
+### 3.1 Criar TenantContext
 
 ```text
-Arquivos a modificar:
-- src/hooks/useConciliacao.ts
-- src/hooks/useDashboardStats.ts
-
-Mudancas:
-1. Importar useTenant()
-2. Adicionar cartorio_id nas queries
-3. Incluir cartorio_id nas mutacoes (insert/update)
-4. Atualizar queryKey para invalidar ao trocar cartorio
+src/contexts/TenantContext.tsx
+- cartorioAtivo: cartório selecionado
+- cartorios: lista de cartórios disponíveis
+- setCartorioAtivo(): alternar entre cartórios
+- isLoading, isSuperAdmin
 ```
 
-Exemplo de mudanca:
-```text
-// Antes
-const { data } = await supabase
-  .from("contas_bancarias")
-  .select("*");
+### 3.2 Seletor de Cartório no Sidebar
 
-// Depois
-const { data } = await supabase
-  .from("contas_bancarias")
-  .select("*")
-  .eq("cartorio_id", cartorioAtivoId);
-```
+Para super_admins, exibir dropdown no header do sidebar para alternar entre cartórios.
 
 ---
 
-## Parte 5: Tela de Usuarios com Dados Reais
+## Parte 4: Tela de Usuários com Dados Reais
 
-### 5.1 Criar Hook useUsuarios
-
-Arquivo: `src/hooks/useUsuarios.ts`
+### 4.1 Hook useUsuarios
 
 ```text
-Funcionalidades:
-- useUsuariosDoCartorio(): listar usuarios do cartorio ativo
-- useConvidarUsuario(): adicionar usuario ao cartorio
-- useAtualizarPerfilUsuario(): modificar role/permissoes
-- useRemoverUsuario(): desvincular usuario do cartorio
+src/hooks/useUsuarios.ts
+- Buscar usuários do cartório ativo
+- Incluir profile, roles e permissões
+- CRUD de usuários
 ```
 
-Query principal:
-```text
-SELECT 
-  cu.id,
-  cu.role,
-  cu.ativo,
-  p.nome,
-  p.avatar_url,
-  au.email,
-  au.last_sign_in_at
-FROM cartorio_usuarios cu
-JOIN auth.users au ON au.id = cu.user_id
-LEFT JOIN profiles p ON p.user_id = cu.user_id
-WHERE cu.cartorio_id = :cartorio_ativo_id
-```
+### 4.2 Componentes
 
-### 5.2 Atualizar src/pages/Usuarios.tsx
-
-Substituir dados mockados por dados reais:
-
-```text
-Mudancas:
-1. Usar useUsuariosDoCartorio() em vez do array estatico
-2. Implementar dialog de convite (InviteUserDialog)
-3. Implementar edicao de perfil
-4. Implementar ativar/desativar usuario
-5. Mostrar loading states e empty states
-```
-
-### 5.3 Dialog de Convite de Usuario
-
-Componente: `src/components/usuarios/ConvidarUsuarioDialog.tsx`
-
-```text
-Campos:
-- Email (obrigatorio)
-- Nome (opcional)
-- Perfil/Role (select: admin, financeiro, operacional)
-
-Fluxo:
-1. Verificar se usuario ja existe no auth.users
-2. Se existir: apenas criar vinculo em cartorio_usuarios
-3. Se nao existir: criar usuario via Supabase Auth + vinculo
-```
+- Lista de usuários com dados reais
+- Dialog para convidar/editar usuários
+- Gerenciador de perfis de acesso
 
 ---
 
-## Parte 6: Perfis de Acesso Personalizaveis
+## Parte 5: Configurar Admins Iniciais
 
-### 6.1 Criar Hook usePerfisAcesso
+Inserir registros para os usuários especificados:
+- `alex@atlastechbrasil.com` -> super_admin
+- `peterson@atlastechbrasil.com` -> super_admin
 
-Arquivo: `src/hooks/usePerfisAcesso.ts`
+---
 
-```text
-Funcionalidades:
-- usePerfisDoCartorio(): listar perfis do cartorio
-- useCriarPerfil(): novo perfil com permissoes
-- useAtualizarPerfil(): modificar permissoes
-- useDeletarPerfil(): remover perfil
+## Sequência de Implementação
+
+1. **Corrigir dependências** do package.json
+2. **Migração do banco** - criar tabelas e enums
+3. **Atualizar RLS** - políticas multi-tenant
+4. **TenantContext** - contexto de cartório ativo
+5. **Atualizar hooks** - incluir cartorio_id nas queries
+6. **Seletor de cartório** - UI para alternar
+7. **Tela de Usuários** - dados reais + CRUD
+8. **Perfis de acesso** - gerenciamento de permissões
+
+---
+
+## Detalhes Técnicos
+
+### Migração SQL Principal
+
+```sql
+-- Enum de roles
+CREATE TYPE app_role AS ENUM ('super_admin', 'admin', 'financeiro', 'operacional');
+
+-- Tabela de cartórios
+CREATE TABLE cartorios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome varchar NOT NULL,
+  cnpj varchar,
+  endereco text,
+  telefone varchar,
+  email varchar,
+  ativo boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Tabela de roles globais (super_admin)
+CREATE TABLE user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role app_role NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, role)
+);
+
+-- Vínculo usuário-cartório
+CREATE TABLE cartorio_usuarios (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cartorio_id uuid REFERENCES cartorios(id) ON DELETE CASCADE NOT NULL,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  role app_role NOT NULL DEFAULT 'operacional',
+  ativo boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (cartorio_id, user_id)
+);
+
+-- Perfis de acesso personalizáveis
+CREATE TABLE perfis_acesso (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cartorio_id uuid REFERENCES cartorios(id) ON DELETE CASCADE NOT NULL,
+  nome varchar NOT NULL,
+  descricao text,
+  permissoes jsonb NOT NULL DEFAULT '[]',
+  cor varchar DEFAULT 'primary',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Adicionar cartorio_id nas tabelas existentes
+ALTER TABLE contas_bancarias ADD COLUMN cartorio_id uuid REFERENCES cartorios(id);
+ALTER TABLE extratos ADD COLUMN cartorio_id uuid REFERENCES cartorios(id);
+ALTER TABLE extrato_itens ADD COLUMN cartorio_id uuid REFERENCES cartorios(id);
+ALTER TABLE lancamentos ADD COLUMN cartorio_id uuid REFERENCES cartorios(id);
+ALTER TABLE conciliacoes ADD COLUMN cartorio_id uuid REFERENCES cartorios(id);
+
+-- Funções de verificação (SECURITY DEFINER)
+CREATE FUNCTION has_role(_user_id uuid, _role app_role)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM user_roles
+    WHERE user_id = _user_id AND role = _role
+  )
+$$;
+
+CREATE FUNCTION is_super_admin(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
+  SELECT has_role(_user_id, 'super_admin')
+$$;
+
+CREATE FUNCTION user_can_access_cartorio(_user_id uuid, _cartorio_id uuid)
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
+  SELECT is_super_admin(_user_id) OR EXISTS (
+    SELECT 1 FROM cartorio_usuarios
+    WHERE user_id = _user_id 
+    AND cartorio_id = _cartorio_id 
+    AND ativo = true
+  )
+$$;
+
+-- Configurar admins iniciais
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'super_admin' FROM auth.users 
+WHERE email IN ('alex@atlastechbrasil.com', 'peterson@atlastechbrasil.com');
 ```
 
-### 6.2 Atualizar Aba "Perfis de Acesso"
+### Estrutura de Permissões (JSONB)
 
-Na pagina de Usuarios, aba "Perfis de Acesso":
-
-```text
-- Listar perfis do banco (perfis_acesso)
-- Criar novos perfis com nome, descricao e permissoes
-- Editor de permissoes granulares (checkboxes)
-- Cores personalizaveis para badges
-```
-
-Estrutura de Permissoes:
-```text
+```json
 {
   "dashboard": { "view": true },
   "conciliacao": { "view": true, "edit": true },
   "contas": { "view": true, "create": true, "edit": true, "delete": false },
-  "extratos": { "view": true, "import": true },
-  "lancamentos": { "view": true, "create": true, "edit": true },
+  "extratos": { "view": true, "import": true, "delete": false },
+  "lancamentos": { "view": true, "create": true, "edit": true, "delete": false },
   "relatorios": { "view": true, "export": true },
   "usuarios": { "view": false, "manage": false },
-  "configuracoes": { "view": false }
+  "configuracoes": { "view": false, "edit": false }
 }
 ```
 
----
+### TenantContext
 
-## Parte 7: Configurar Super Admin para Peterson
-
-### 7.1 Nota Importante
-
-O usuario `peterson@atlastechbrasil.com` ainda nao existe no sistema. 
-Sera necessario:
-1. Peterson criar conta na tela de auth (se ativada) OU
-2. Criar manualmente via Supabase Dashboard OU
-3. Adicionar funcionalidade de convite
-
-Uma vez que o usuario exista, inserir o role:
-```sql
-INSERT INTO user_roles (user_id, role)
-SELECT id, 'super_admin' 
-FROM auth.users 
-WHERE email = 'peterson@atlastechbrasil.com';
-```
-
----
-
-## Sequencia de Implementacao
-
-```text
-Etapa 1: Corrigir Build
-+------------------------+
-| 1. Restaurar package.json com dependencias     |
-| 2. Corrigir sintaxe CSS do Tailwind v4         |
-+------------------------+
-         |
-         v
-Etapa 2: Infraestrutura de Tenant
-+------------------------+
-| 3. Criar TenantContext                         |
-| 4. Integrar TenantProvider no App.tsx          |
-| 5. Adicionar seletor de cartorio no Sidebar    |
-+------------------------+
-         |
-         v
-Etapa 3: Atualizar Queries
-+------------------------+
-| 6. Modificar hooks para filtrar por cartorio   |
-+------------------------+
-         |
-         v
-Etapa 4: Tela de Usuarios
-+------------------------+
-| 7. Criar useUsuarios hook                      |
-| 8. Atualizar Usuarios.tsx com dados reais      |
-| 9. Criar dialogs de convite e edicao           |
-| 10. Implementar gerenciamento de perfis        |
-+------------------------+
-```
-
----
-
-## Arquivos a Serem Criados/Modificados
-
-```text
-Novos Arquivos:
-- src/contexts/TenantContext.tsx
-- src/hooks/useUsuarios.ts
-- src/hooks/usePerfisAcesso.ts
-- src/components/usuarios/ConvidarUsuarioDialog.tsx
-- src/components/usuarios/EditarUsuarioDialog.tsx
-- src/components/usuarios/GerenciarPerfisDialog.tsx
-- src/components/layout/CartorioSelector.tsx
-
-Arquivos Modificados:
-- package.json (restaurar dependencias)
-- src/index.css (corrigir sintaxe Tailwind v4)
-- src/App.tsx (adicionar TenantProvider)
-- src/components/layout/AppSidebar.tsx (seletor de cartorio)
-- src/hooks/useConciliacao.ts (filtrar por cartorio)
-- src/hooks/useDashboardStats.ts (filtrar por cartorio)
-- src/pages/Usuarios.tsx (dados reais)
+```typescript
+interface TenantContextType {
+  cartorioAtivo: Cartorio | null;
+  cartorios: Cartorio[];
+  userRole: AppRole | null;
+  isSuperAdmin: boolean;
+  isLoading: boolean;
+  setCartorioAtivo: (id: string) => void;
+  refetch: () => void;
+}
 ```
 
 ---
 
 ## Resultado Esperado
 
-Apos a implementacao:
-
-1. **Super admins** (alex@atlastechbrasil.com) verao dropdown no sidebar para alternar entre cartorios
-
-2. **Dados isolados** - cada cartorio tera seus proprios dados financeiros completamente separados
-
-3. **Tela de Usuarios** exibira usuarios reais do cartorio ativo com:
-   - Nome, email, perfil e status
-   - Ultimo acesso
-   - Acoes de editar, ativar/desativar, remover
-
-4. **Perfis de Acesso** serao gerenciaveis com permissoes granulares por modulo
-
-5. **Peterson** podera ser adicionado como super_admin assim que criar sua conta
+- Super admins podem visualizar e alternar entre todos os cartórios
+- Cada cartório tem dados completamente isolados
+- Usuários veem apenas dados do cartório onde têm acesso
+- Perfis de acesso são configuráveis por cartório
+- Tela de Usuários exibe dados reais com CRUD funcional
