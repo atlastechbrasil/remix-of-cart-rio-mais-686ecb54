@@ -1,12 +1,74 @@
 import * as React from "react";
-import { Bell, Search, Building2 } from "lucide-react";
+import { Bell, Search, Building2, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useTenant } from "@/contexts/TenantContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   children?: React.ReactNode;
+}
+
+function HeaderCartorioSelector() {
+  const { cartorioAtivo, cartorios, isLoading, setCartorioAtivo, isSuperAdmin } = useTenant();
+
+  // Só mostrar para super admins ou usuários com múltiplos cartórios
+  if (!isSuperAdmin && cartorios.length <= 1) {
+    if (!cartorioAtivo) return null;
+    
+    return (
+      <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground border rounded-md">
+        <Building2 className="w-4 h-4" />
+        <span className="truncate max-w-[200px]">{cartorioAtivo.nome}</span>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <Skeleton className="h-9 w-48 hidden sm:block" />;
+  }
+
+  if (cartorios.length === 0) {
+    return null;
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="hidden sm:flex gap-2 max-w-[250px]">
+          <Building2 className="w-4 h-4 flex-shrink-0" />
+          <span className="truncate">{cartorioAtivo?.nome || "Selecione"}</span>
+          <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64 bg-popover">
+        {cartorios.map((cartorio) => (
+          <DropdownMenuItem
+            key={cartorio.id}
+            onClick={() => setCartorioAtivo(cartorio.id)}
+            className="flex items-center gap-2 cursor-pointer"
+          >
+            <Check
+              className={cn(
+                "w-4 h-4 flex-shrink-0",
+                cartorioAtivo?.id === cartorio.id ? "opacity-100" : "opacity-0"
+              )}
+            />
+            <span className="truncate">{cartorio.nome}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
@@ -31,10 +93,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           </div>
 
           {/* Cartório Selector */}
-          <Button variant="outline" size="sm" className="hidden sm:flex gap-2">
-            <Building2 className="w-4 h-4" />
-            <span>1º Ofício de Notas</span>
-          </Button>
+          <HeaderCartorioSelector />
 
           {/* Notifications */}
           <Button variant="ghost" size="icon" className="relative">
