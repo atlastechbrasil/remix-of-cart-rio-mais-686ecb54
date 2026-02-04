@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { format, subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -51,24 +52,37 @@ export interface SaldoMensal {
 // Hook para estatísticas principais
 export function useDashboardStats() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["dashboard-stats", user?.id],
+    queryKey: ["dashboard-stats", user?.id, cartorioAtivo?.id],
     queryFn: async (): Promise<DashboardStats> => {
       // Buscar saldo total das contas bancárias ativas
-      const { data: contas, error: contasError } = await supabase
+      let contasQuery = supabase
         .from("contas_bancarias")
         .select("saldo")
         .eq("ativo", true);
+      
+      if (cartorioAtivo) {
+        contasQuery = contasQuery.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data: contas, error: contasError } = await contasQuery;
 
       if (contasError) throw contasError;
 
       const saldoTotal = contas?.reduce((acc, conta) => acc + Number(conta.saldo), 0) || 0;
 
       // Buscar lançamentos por status de conciliação
-      const { data: lancamentos, error: lancamentosError } = await supabase
+      let lancamentosQuery = supabase
         .from("lancamentos")
         .select("status_conciliacao");
+      
+      if (cartorioAtivo) {
+        lancamentosQuery = lancamentosQuery.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data: lancamentos, error: lancamentosError } = await lancamentosQuery;
 
       if (lancamentosError) throw lancamentosError;
 
@@ -80,11 +94,17 @@ export function useDashboardStats() {
       const mesAnteriorInicio = format(startOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
       const mesAnteriorFim = format(endOfMonth(subMonths(new Date(), 1)), "yyyy-MM-dd");
 
-      const { data: lancamentosMesAnterior } = await supabase
+      let lancamentosMesAnteriorQuery = supabase
         .from("lancamentos")
         .select("status_conciliacao")
         .gte("data", mesAnteriorInicio)
         .lte("data", mesAnteriorFim);
+      
+      if (cartorioAtivo) {
+        lancamentosMesAnteriorQuery = lancamentosMesAnteriorQuery.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data: lancamentosMesAnterior } = await lancamentosMesAnteriorQuery;
 
       const conciliadosMesAnterior = lancamentosMesAnterior?.filter(l => l.status_conciliacao === "conciliado").length || 1;
       const pendentesMesAnterior = lancamentosMesAnterior?.filter(l => l.status_conciliacao === "pendente").length || 1;
@@ -108,16 +128,23 @@ export function useDashboardStats() {
 // Hook para transações recentes
 export function useRecentTransactions(limit: number = 5) {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["recent-transactions", user?.id, limit],
+    queryKey: ["recent-transactions", user?.id, cartorioAtivo?.id, limit],
     queryFn: async (): Promise<TransacaoRecente[]> => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("lancamentos")
         .select("id, descricao, tipo, valor, data, status_conciliacao")
         .order("data", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(limit);
+      
+      if (cartorioAtivo) {
+        query = query.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -155,12 +182,13 @@ export function useRecentTransactions(limit: number = 5) {
 // Hook para divergências
 export function useDivergencias() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["divergencias", user?.id],
+    queryKey: ["divergencias", user?.id, cartorioAtivo?.id],
     queryFn: async (): Promise<DivergenciaItem[]> => {
       // Buscar conciliações com diferença
-      const { data: conciliacoes, error: conciliacoesError } = await supabase
+      let conciliacoesQuery = supabase
         .from("conciliacoes")
         .select(`
           id,
@@ -172,11 +200,17 @@ export function useDivergencias() {
         .neq("diferenca", 0)
         .order("conciliado_em", { ascending: false })
         .limit(5);
+      
+      if (cartorioAtivo) {
+        conciliacoesQuery = conciliacoesQuery.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data: conciliacoes, error: conciliacoesError } = await conciliacoesQuery;
 
       if (conciliacoesError) throw conciliacoesError;
 
       // Buscar itens de extrato não conciliados
-      const { data: itensPendentes, error: itensError } = await supabase
+      let itensQuery = supabase
         .from("extrato_itens")
         .select(`
           id,
@@ -189,6 +223,12 @@ export function useDivergencias() {
         .eq("status_conciliacao", "divergente")
         .order("data_transacao", { ascending: false })
         .limit(5);
+      
+      if (cartorioAtivo) {
+        itensQuery = itensQuery.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data: itensPendentes, error: itensError } = await itensQuery;
 
       if (itensError) throw itensError;
 
@@ -269,9 +309,10 @@ export function useDivergencias() {
 // Hook para dados do gráfico de conciliação por semana
 export function useConciliacaoSemanal() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["conciliacao-semanal", user?.id],
+    queryKey: ["conciliacao-semanal", user?.id, cartorioAtivo?.id],
     queryFn: async (): Promise<ConciliacaoSemana[]> => {
       const hoje = new Date();
       const semanas: ConciliacaoSemana[] = [];
@@ -281,11 +322,17 @@ export function useConciliacaoSemanal() {
         const inicioSemana = startOfWeek(dataReferencia, { weekStartsOn: 0 });
         const fimSemana = endOfWeek(dataReferencia, { weekStartsOn: 0 });
 
-        const { data: lancamentos } = await supabase
+        let query = supabase
           .from("lancamentos")
           .select("status_conciliacao")
           .gte("data", format(inicioSemana, "yyyy-MM-dd"))
           .lte("data", format(fimSemana, "yyyy-MM-dd"));
+        
+        if (cartorioAtivo) {
+          query = query.eq("cartorio_id", cartorioAtivo.id);
+        }
+
+        const { data: lancamentos } = await query;
 
         semanas.push({
           semana: `Sem ${4 - i}`,
@@ -304,15 +351,22 @@ export function useConciliacaoSemanal() {
 // Hook para evolução do saldo
 export function useSaldoEvolution() {
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useQuery({
-    queryKey: ["saldo-evolution", user?.id],
+    queryKey: ["saldo-evolution", user?.id, cartorioAtivo?.id],
     queryFn: async (): Promise<SaldoMensal[]> => {
       // Buscar saldo atual das contas
-      const { data: contas, error: contasError } = await supabase
+      let contasQuery = supabase
         .from("contas_bancarias")
         .select("saldo")
         .eq("ativo", true);
+      
+      if (cartorioAtivo) {
+        contasQuery = contasQuery.eq("cartorio_id", cartorioAtivo.id);
+      }
+
+      const { data: contas, error: contasError } = await contasQuery;
 
       if (contasError) throw contasError;
 
@@ -327,11 +381,17 @@ export function useSaldoEvolution() {
         const inicioMes = startOfMonth(dataReferencia);
         const fimMes = endOfMonth(dataReferencia);
 
-        const { data: lancamentos } = await supabase
+        let lancamentosQuery = supabase
           .from("lancamentos")
           .select("tipo, valor")
           .gte("data", format(inicioMes, "yyyy-MM-dd"))
           .lte("data", format(fimMes, "yyyy-MM-dd"));
+        
+        if (cartorioAtivo) {
+          lancamentosQuery = lancamentosQuery.eq("cartorio_id", cartorioAtivo.id);
+        }
+
+        const { data: lancamentos } = await lancamentosQuery;
 
         // Calcular variação do mês
         const receitasMes = lancamentos?.filter(l => l.tipo === "receita").reduce((acc, l) => acc + Number(l.valor), 0) || 0;

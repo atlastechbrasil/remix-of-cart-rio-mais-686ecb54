@@ -18,9 +18,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTenant } from "@/contexts/TenantContext";
 import { toast } from "sonner";
 import fincartLogo from "@/assets/fincart-logo.png";
 import fincartIcon from "@/assets/fincart-icon.png";
+import { CartorioSelector } from "./CartorioSelector";
 
 const menuItems = [
   {
@@ -82,6 +84,7 @@ export function AppSidebar() {
   });
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { isSuperAdmin } = useTenant();
 
   useEffect(() => {
     localStorage.setItem('sidebar-collapsed', String(collapsed));
@@ -122,6 +125,18 @@ export function AppSidebar() {
           )}
         />
       </div>
+
+      {/* Cartório Selector */}
+      <CartorioSelector collapsed={collapsed} />
+
+      {/* Super Admin Badge */}
+      {isSuperAdmin && !collapsed && (
+        <div className="px-4 pb-2">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary font-medium">
+            Super Admin
+          </span>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
