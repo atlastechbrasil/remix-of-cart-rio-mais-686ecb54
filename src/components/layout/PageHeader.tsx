@@ -21,7 +21,17 @@ interface PageHeaderProps {
 function HeaderCartorioSelector() {
   const { cartorioAtivo, cartorios, isLoading, setCartorioAtivo, isSuperAdmin } = useTenant();
 
-  // Só mostrar para super admins ou usuários com múltiplos cartórios
+  // Sempre verificar loading primeiro
+  if (isLoading) {
+    return <Skeleton className="h-9 w-48 hidden sm:block" />;
+  }
+
+  // Sem cartórios disponíveis
+  if (cartorios.length === 0) {
+    return null;
+  }
+
+  // Se não é super admin e só tem um cartório, mostrar label estático
   if (!isSuperAdmin && cartorios.length <= 1) {
     if (!cartorioAtivo) return null;
     
@@ -31,14 +41,6 @@ function HeaderCartorioSelector() {
         <span className="truncate max-w-[200px]">{cartorioAtivo.nome}</span>
       </div>
     );
-  }
-
-  if (isLoading) {
-    return <Skeleton className="h-9 w-48 hidden sm:block" />;
-  }
-
-  if (cartorios.length === 0) {
-    return null;
   }
 
   return (
