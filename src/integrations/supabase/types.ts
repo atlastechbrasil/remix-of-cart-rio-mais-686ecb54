@@ -14,8 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
+      cartorio_usuarios: {
+        Row: {
+          ativo: boolean
+          cartorio_id: string
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          cartorio_id: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          cartorio_id?: string
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cartorio_usuarios_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cartorios: {
+        Row: {
+          ativo: boolean
+          cnpj: string | null
+          created_at: string
+          email: string | null
+          endereco: string | null
+          id: string
+          nome: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          endereco?: string | null
+          id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       conciliacoes: {
         Row: {
+          cartorio_id: string | null
           conciliado_em: string
           created_at: string
           diferenca: number | null
@@ -26,6 +101,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cartorio_id?: string | null
           conciliado_em?: string
           created_at?: string
           diferenca?: number | null
@@ -36,6 +112,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cartorio_id?: string | null
           conciliado_em?: string
           created_at?: string
           diferenca?: number | null
@@ -46,6 +123,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "conciliacoes_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conciliacoes_extrato_item_id_fkey"
             columns: ["extrato_item_id"]
@@ -67,6 +151,7 @@ export type Database = {
           agencia: string
           ativo: boolean
           banco: string
+          cartorio_id: string | null
           conta: string
           created_at: string
           id: string
@@ -79,6 +164,7 @@ export type Database = {
           agencia: string
           ativo?: boolean
           banco: string
+          cartorio_id?: string | null
           conta: string
           created_at?: string
           id?: string
@@ -91,6 +177,7 @@ export type Database = {
           agencia?: string
           ativo?: boolean
           banco?: string
+          cartorio_id?: string | null
           conta?: string
           created_at?: string
           id?: string
@@ -99,10 +186,19 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contas_bancarias_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       extrato_itens: {
         Row: {
+          cartorio_id: string | null
           created_at: string
           data_transacao: string
           descricao: string
@@ -116,6 +212,7 @@ export type Database = {
           valor: number
         }
         Insert: {
+          cartorio_id?: string | null
           created_at?: string
           data_transacao: string
           descricao: string
@@ -129,6 +226,7 @@ export type Database = {
           valor: number
         }
         Update: {
+          cartorio_id?: string | null
           created_at?: string
           data_transacao?: string
           descricao?: string
@@ -142,6 +240,13 @@ export type Database = {
           valor?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "extrato_itens_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "extrato_itens_extrato_id_fkey"
             columns: ["extrato_id"]
@@ -161,6 +266,7 @@ export type Database = {
       extratos: {
         Row: {
           arquivo: string
+          cartorio_id: string | null
           conta_id: string
           created_at: string
           id: string
@@ -172,6 +278,7 @@ export type Database = {
         }
         Insert: {
           arquivo: string
+          cartorio_id?: string | null
           conta_id: string
           created_at?: string
           id?: string
@@ -183,6 +290,7 @@ export type Database = {
         }
         Update: {
           arquivo?: string
+          cartorio_id?: string | null
           conta_id?: string
           created_at?: string
           id?: string
@@ -194,6 +302,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "extratos_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "extratos_conta_id_fkey"
             columns: ["conta_id"]
             isOneToOne: false
@@ -204,6 +319,7 @@ export type Database = {
       }
       lancamentos: {
         Row: {
+          cartorio_id: string | null
           categoria: string | null
           created_at: string
           data: string
@@ -220,6 +336,7 @@ export type Database = {
           valor: number
         }
         Insert: {
+          cartorio_id?: string | null
           categoria?: string | null
           created_at?: string
           data: string
@@ -236,6 +353,7 @@ export type Database = {
           valor: number
         }
         Update: {
+          cartorio_id?: string | null
           categoria?: string | null
           created_at?: string
           data?: string
@@ -259,12 +377,61 @@ export type Database = {
             referencedRelation: "extrato_itens"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lancamentos_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      perfis_acesso: {
+        Row: {
+          cartorio_id: string
+          cor: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          nome: string
+          permissoes: Json
+          updated_at: string
+        }
+        Insert: {
+          cartorio_id: string
+          cor?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome: string
+          permissoes?: Json
+          updated_at?: string
+        }
+        Update: {
+          cartorio_id?: string
+          cor?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          nome?: string
+          permissoes?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfis_acesso_cartorio_id_fkey"
+            columns: ["cartorio_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
         Row: {
           avatar_url: string | null
           cargo: string | null
+          cartorio_ativo_id: string | null
           created_at: string
           id: string
           nome: string | null
@@ -274,6 +441,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           cargo?: string | null
+          cartorio_ativo_id?: string | null
           created_at?: string
           id?: string
           nome?: string | null
@@ -283,10 +451,40 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           cargo?: string | null
+          cartorio_ativo_id?: string | null
           created_at?: string
           id?: string
           nome?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_cartorio_ativo_id_fkey"
+            columns: ["cartorio_ativo_id"]
+            isOneToOne: false
+            referencedRelation: "cartorios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
         Relationships: []
@@ -296,9 +494,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_cartorios: { Args: { _user_id: string }; Returns: string[] }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      user_can_access_cartorio: {
+        Args: { _cartorio_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "super_admin" | "admin" | "financeiro" | "operacional"
       status_conciliacao: "pendente" | "conciliado" | "divergente"
       status_lancamento: "pago" | "pendente" | "agendado" | "cancelado"
       tipo_conta: "corrente" | "poupanca" | "investimento"
@@ -431,6 +642,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["super_admin", "admin", "financeiro", "operacional"],
       status_conciliacao: ["pendente", "conciliado", "divergente"],
       status_lancamento: ["pago", "pendente", "agendado", "cancelado"],
       tipo_conta: ["corrente", "poupanca", "investimento"],
