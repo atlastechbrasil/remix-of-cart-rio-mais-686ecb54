@@ -143,7 +143,7 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           {showForgotPassword ? (
-            <Form {...forgotPasswordForm} key="forgot-password-form">
+            <Form {...forgotPasswordForm}>
               <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)} className="space-y-4">
                 <FormField
                   control={forgotPasswordForm.control}

@@ -1,3 +1,4 @@
+import * as React from "react";
 import { AppSidebar } from "./AppSidebar";
 
 interface MainLayoutProps {
