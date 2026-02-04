@@ -259,7 +259,7 @@ export default function Conciliacao() {
               </div>
             </CardHeader>
             <CardContent>
-              <ResizablePanelGroup orientation="horizontal" className="min-h-[500px] rounded-lg border">
+              <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
                 {/* Extrato Bancário */}
                 <ResizablePanel defaultSize={50} minSize={30}>
                   <div className="h-full flex flex-col">

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -41,16 +43,41 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useCreateLancamento, TipoLancamento, StatusLancamento } from "@/hooks/useConciliacao";
 
-interface LancamentoFormData {
-  tipo: TipoLancamento;
-  descricao: string;
-  valor: string;
-  data: Date | undefined;
-  categoria: string;
-  responsavel: string;
-  status: StatusLancamento;
-  observacoes: string;
-}
+const lancamentoSchema = z.object({
+  tipo: z.enum(["receita", "despesa"], {
+    required_error: "Selecione o tipo de lançamento",
+  }),
+  descricao: z
+    .string()
+    .trim()
+    .min(3, { message: "Descrição deve ter no mínimo 3 caracteres" })
+    .max(200, { message: "Descrição deve ter no máximo 200 caracteres" }),
+  valor: z
+    .string()
+    .trim()
+    .min(1, { message: "Valor é obrigatório" })
+    .refine(
+      (val) => {
+        const num = parseFloat(val.replace(/\./g, "").replace(",", "."));
+        return !isNaN(num) && num > 0;
+      },
+      { message: "Valor deve ser maior que zero" }
+    ),
+  data: z.date({
+    required_error: "Data é obrigatória",
+  }),
+  categoria: z.string().min(1, { message: "Categoria é obrigatória" }),
+  responsavel: z.string().optional(),
+  status: z.enum(["pago", "pendente", "agendado"], {
+    required_error: "Status é obrigatório",
+  }),
+  observacoes: z
+    .string()
+    .max(500, { message: "Observação deve ter no máximo 500 caracteres" })
+    .optional(),
+});
+
+type LancamentoFormData = z.infer<typeof lancamentoSchema>;
 
 const categoriasReceita = [
   "Registro",
@@ -81,11 +108,11 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
   const createLancamento = useCreateLancamento();
 
   const form = useForm<LancamentoFormData>({
+    resolver: zodResolver(lancamentoSchema),
     defaultValues: {
       tipo: "receita",
       descricao: "",
       valor: "",
-      data: undefined,
       categoria: "",
       responsavel: "",
       status: "pendente",
@@ -108,38 +135,17 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
   };
 
   const onSubmit = (data: LancamentoFormData) => {
-    if (!data.descricao || data.descricao.length < 3) {
-      form.setError("descricao", { message: "Descrição deve ter no mínimo 3 caracteres" });
-      return;
-    }
-    if (!data.valor) {
-      form.setError("valor", { message: "Valor é obrigatório" });
-      return;
-    }
-    if (!data.data) {
-      form.setError("data", { message: "Data é obrigatória" });
-      return;
-    }
-    if (!data.categoria) {
-      form.setError("categoria", { message: "Categoria é obrigatória" });
-      return;
-    }
-
     const valorNumerico = parseFloat(data.valor.replace(/\./g, "").replace(",", "."));
-    if (isNaN(valorNumerico) || valorNumerico <= 0) {
-      form.setError("valor", { message: "Valor deve ser maior que zero" });
-      return;
-    }
 
     createLancamento.mutate(
       {
-        tipo: data.tipo,
+        tipo: data.tipo as TipoLancamento,
         descricao: data.descricao,
         valor: valorNumerico,
         data: format(data.data, "yyyy-MM-dd"),
         categoria: data.categoria,
         responsavel: data.responsavel || null,
-        status: data.status,
+        status: data.status as StatusLancamento,
         observacoes: data.observacoes || null,
         status_conciliacao: "pendente",
         extrato_item_vinculado_id: null,
@@ -321,7 +327,7 @@ export function NovoLancamentoDialog({ trigger }: NovoLancamentoDialogProps) {
               />
             </div>
 
-            {/* Categoria e Status */}
+            {/* Categoria e Responsável */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
