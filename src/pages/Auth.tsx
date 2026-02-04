@@ -130,7 +130,7 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-xl border-border/50">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center">
-            <img src={fincartLogo} alt="FinCart" className="h-16" />
+            <img src={fincartLogo} alt="FinCart" className="w-48 h-auto" />
           </div>
           <CardTitle className="text-2xl font-bold">
             {showForgotPassword ? "Recuperar Senha" : "Bem-vindo ao FinCart"}
