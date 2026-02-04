@@ -45,9 +45,7 @@ import { cn } from "@/lib/utils";
 import { useCreateLancamento, TipoLancamento, StatusLancamento } from "@/hooks/useConciliacao";
 
 const lancamentoSchema = z.object({
-  tipo: z.enum(["receita", "despesa"], {
-    required_error: "Selecione o tipo de lançamento",
-  }),
+  tipo: z.union([z.literal("receita"), z.literal("despesa")]),
   descricao: z
     .string()
     .trim()
@@ -65,13 +63,11 @@ const lancamentoSchema = z.object({
       { message: "Valor deve ser maior que zero" }
     ),
   data: z.date({
-    required_error: "Data é obrigatória",
+    message: "Data é obrigatória",
   }),
   categoria: z.string().min(1, { message: "Categoria é obrigatória" }),
   responsavel: z.string().optional(),
-  status: z.enum(["pago", "pendente", "agendado"], {
-    required_error: "Status é obrigatório",
-  }),
+  status: z.union([z.literal("pago"), z.literal("pendente"), z.literal("agendado")]),
   observacoes: z
     .string()
     .max(500, { message: "Observação deve ter no máximo 500 caracteres" })

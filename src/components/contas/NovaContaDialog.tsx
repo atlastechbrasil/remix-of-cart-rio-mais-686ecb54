@@ -37,11 +37,13 @@ const formSchema = z.object({
   banco: z.string().min(1, "Selecione o banco"),
   agencia: z.string().min(1, "Informe a agência").max(10, "Agência inválida"),
   conta: z.string().min(1, "Informe a conta").max(20, "Conta inválida"),
-  tipo: z.enum(["corrente", "poupanca", "investimento"], {
-    required_error: "Selecione o tipo de conta",
-  }),
+  tipo: z.union([
+    z.literal("corrente"),
+    z.literal("poupanca"),
+    z.literal("investimento"),
+  ]),
   saldoInicial: z.string().optional(),
-  ativo: z.boolean().default(true),
+  ativo: z.boolean(),
 });
 
 type FormData = z.infer<typeof formSchema>;
