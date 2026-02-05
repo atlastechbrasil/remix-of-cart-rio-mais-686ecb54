@@ -2,13 +2,17 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, FileText, Building2, CreditCard, FileSpreadsheet, Loader2 } from "lucide-react";
 import {
-  CommandDialog,
+  Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useGlobalSearch, SearchResultType } from "@/hooks/useGlobalSearch";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -41,9 +45,9 @@ export function GlobalSearch() {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  // Search when query changes
+  // Search when debounced query changes
   React.useEffect(() => {
-    if (debouncedQuery) {
+    if (debouncedQuery && debouncedQuery.length >= 2) {
       search(debouncedQuery);
     } else {
       clearResults();
@@ -84,6 +88,10 @@ export function GlobalSearch() {
     return groups;
   }, [results]);
 
+  const hasResults = results.length > 0;
+  const showEmptyMessage = !isSearching && debouncedQuery.length >= 2 && !hasResults;
+  const showHint = debouncedQuery.length < 2;
+
   return (
     <>
       <Button
@@ -99,61 +107,68 @@ export function GlobalSearch() {
         </kbd>
       </Button>
 
-      <CommandDialog open={open} onOpenChange={handleOpenChange}>
-        <CommandInput
-          placeholder="Buscar lançamentos, contas, extratos..."
-          value={query}
-          onValueChange={setQuery}
-        />
-        <CommandList>
-          {isSearching && (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
-          
-          {!isSearching && query.length >= 2 && results.length === 0 && (
-            <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
-          )}
-          
-          {!isSearching && query.length < 2 && (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              Digite ao menos 2 caracteres para buscar...
-            </div>
-          )}
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="overflow-hidden p-0 shadow-lg max-w-lg">
+          <Command 
+            className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground"
+            shouldFilter={false}
+          >
+            <CommandInput
+              placeholder="Buscar lançamentos, contas, extratos..."
+              value={query}
+              onValueChange={setQuery}
+            />
+            <CommandList className="max-h-[400px]">
+              {isSearching && (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              
+              {showEmptyMessage && (
+                <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+              )}
+              
+              {showHint && !isSearching && (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  Digite ao menos 2 caracteres para buscar...
+                </div>
+              )}
 
-          {!isSearching && (Object.keys(groupedResults) as SearchResultType[]).map((type) => {
-            const items = groupedResults[type];
-            if (items.length === 0) return null;
-            
-            const config = typeConfig[type];
-            const Icon = config.icon;
+              {!isSearching && hasResults && (Object.keys(groupedResults) as SearchResultType[]).map((type) => {
+                const items = groupedResults[type];
+                if (items.length === 0) return null;
+                
+                const config = typeConfig[type];
+                const Icon = config.icon;
 
-            return (
-              <CommandGroup key={type} heading={config.label}>
-                {items.map(result => (
-                  <CommandItem
-                    key={result.id}
-                    value={`${result.type}-${result.id}`}
-                    onSelect={() => handleSelect(result.route)}
-                    className="cursor-pointer"
-                  >
-                    <Icon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="truncate font-medium">{result.title}</span>
-                      {result.subtitle && (
-                        <span className="text-xs text-muted-foreground truncate">
-                          {result.subtitle}
-                        </span>
-                      )}
-                    </div>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            );
-          })}
-        </CommandList>
-      </CommandDialog>
+                return (
+                  <CommandGroup key={type} heading={config.label}>
+                    {items.map(result => (
+                      <CommandItem
+                        key={result.id}
+                        value={result.id}
+                        onSelect={() => handleSelect(result.route)}
+                        className="cursor-pointer"
+                      >
+                        <Icon className="mr-2 h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="truncate font-medium">{result.title}</span>
+                          {result.subtitle && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {result.subtitle}
+                            </span>
+                          )}
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                );
+              })}
+            </CommandList>
+          </Command>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
