@@ -39,6 +39,7 @@ import {
   useDeleteCartorioUsuario,
   useDeletePerfilAcesso,
   type UsuarioCartorio,
+  type UsuarioAgregado,
   type PerfilAcesso,
 } from "@/hooks/useUsuarios";
 import { NovoUsuarioDialog } from "@/components/usuarios/NovoUsuarioDialog";
@@ -71,7 +72,6 @@ export default function Usuarios() {
   const { data: allUsuarios = [], isLoading: loadingAllUsuarios } = useAllUsuarios();
   const { data: cartorioUsuarios = [], isLoading: loadingCartorioUsuarios } = useCartorioUsuarios();
   
-  const usuarios = isSuperAdmin ? allUsuarios : cartorioUsuarios;
   const loadingUsuarios = isSuperAdmin ? loadingAllUsuarios : loadingCartorioUsuarios;
   
   const { data: perfis = [], isLoading: loadingPerfis } = usePerfisAcesso();
@@ -91,11 +91,19 @@ export default function Usuarios() {
     return email?.substring(0, 2).toUpperCase() || "U";
   };
 
-  const filteredUsuarios = usuarios.filter(
+  // Filtrar usuários agregados (super admin)
+  const filteredAllUsuarios = allUsuarios.filter(
     (u) =>
       u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ("cartorio_nome" in u && typeof u.cartorio_nome === "string" && u.cartorio_nome.toLowerCase().includes(searchTerm.toLowerCase()))
+      u.cartorios.some((c) => c.cartorio_nome.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // Filtrar usuários do cartório (admin normal)
+  const filteredCartorioUsuarios = cartorioUsuarios.filter(
+    (u) =>
+      u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleToggleAtivo = (usuario: UsuarioCartorio) => {
@@ -170,7 +178,7 @@ export default function Usuarios() {
           <ScrollArea className="w-full">
             <TabsList className="w-full sm:w-auto">
               <TabsTrigger value="usuarios" className="flex-1 sm:flex-none">
-                Usuários {isSuperAdmin && `(${filteredUsuarios.length})`}
+                Usuários {isSuperAdmin ? `(${filteredAllUsuarios.length})` : `(${filteredCartorioUsuarios.length})`}
               </TabsTrigger>
               <TabsTrigger value="perfis" className="flex-1 sm:flex-none">
                 Perfis de Acesso
@@ -200,128 +208,223 @@ export default function Usuarios() {
               </div>
             )}
 
-            {/* Empty State */}
-            {!loadingUsuarios && filteredUsuarios.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  {searchTerm ? "Nenhum usuário encontrado." : "Nenhum usuário cadastrado no sistema."}
-                </p>
-                <Button onClick={() => setNovoUsuarioOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Usuário
-                </Button>
-              </div>
+            {/* Renderização para Super Admins - Usuários Agregados */}
+            {isSuperAdmin && !loadingUsuarios && (
+              <>
+                {filteredAllUsuarios.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground mb-4">
+                      {searchTerm ? "Nenhum usuário encontrado." : "Nenhum usuário cadastrado no sistema."}
+                    </p>
+                    <Button onClick={() => setNovoUsuarioOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Usuário
+                    </Button>
+                  </div>
+                )}
+
+                {filteredAllUsuarios.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {filteredAllUsuarios.map((usuario) => (
+                      <Card key={usuario.user_id} className="hover:border-primary/20 transition-colors">
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                              <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                                <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm sm:text-base">
+                                  {getInitials(usuario.nome, usuario.email)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
+                                  {usuario.nome || "Usuário sem nome"}
+                                </h3>
+                                {usuario.cargo && (
+                                  <p className="text-xs text-muted-foreground truncate">{usuario.cargo}</p>
+                                )}
+                              </div>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+
+                          {/* Cartórios vinculados */}
+                          <div className="mt-3 sm:mt-4 space-y-2">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              Cartórios ({usuario.cartorios.length})
+                            </p>
+                            <div className="space-y-1.5">
+                              {usuario.cartorios.map((vinculo) => (
+                                <div
+                                  key={vinculo.id}
+                                  className="flex items-center justify-between gap-2 p-2 rounded-md bg-muted/50"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                                    <span className="text-xs truncate">{vinculo.cartorio_nome}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <Badge
+                                      variant="outline"
+                                      className={cn("text-[10px] px-1.5 py-0", roleStyles[vinculo.role] || roleStyles.operacional)}
+                                    >
+                                      {roleLabels[vinculo.role] || vinculo.role}
+                                    </Badge>
+                                    <span
+                                      className={cn(
+                                        "w-2 h-2 rounded-full",
+                                        vinculo.ativo ? "bg-success" : "bg-muted-foreground"
+                                      )}
+                                      title={vinculo.ativo ? "Ativo" : "Inativo"}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">
+                              Cadastrado em {new Date(usuario.created_at).toLocaleDateString("pt-BR")}
+                            </span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
-            {/* User Cards - Responsive grid */}
-            {!loadingUsuarios && filteredUsuarios.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                {filteredUsuarios.map((usuario) => (
-                  <Card key={usuario.id} className="hover:border-primary/20 transition-colors">
-                    <CardContent className="p-3 sm:p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm sm:text-base">
-                              {getInitials(usuario.nome, usuario.email)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
-                              {usuario.nome || "Usuário sem nome"}
-                            </h3>
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs", roleStyles[usuario.role] || roleStyles.operacional)}
-                            >
-                              {roleLabels[usuario.role] || usuario.role}
-                            </Badge>
+            {/* Renderização para Admins de Cartório - Usuários Simples */}
+            {!isSuperAdmin && !loadingUsuarios && (
+              <>
+                {filteredCartorioUsuarios.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-muted-foreground mb-4">
+                      {searchTerm ? "Nenhum usuário encontrado." : "Nenhum usuário vinculado a este cartório."}
+                    </p>
+                    <Button onClick={() => setNovoUsuarioOpen(true)}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Usuário
+                    </Button>
+                  </div>
+                )}
+
+                {filteredCartorioUsuarios.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    {filteredCartorioUsuarios.map((usuario) => (
+                      <Card key={usuario.id} className="hover:border-primary/20 transition-colors">
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                              <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                                <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm sm:text-base">
+                                  {getInitials(usuario.nome, usuario.email)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
+                                  {usuario.nome || "Usuário sem nome"}
+                                </h3>
+                                <Badge
+                                  variant="outline"
+                                  className={cn("text-xs", roleStyles[usuario.role] || roleStyles.operacional)}
+                                >
+                                  {roleLabels[usuario.role] || usuario.role}
+                                </Badge>
+                              </div>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem>
+                                  <Shield className="w-4 h-4 mr-2" />
+                                  Alterar Perfil
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                {usuario.ativo ? (
+                                  <DropdownMenuItem
+                                    className="text-warning"
+                                    onClick={() => handleToggleAtivo(usuario)}
+                                  >
+                                    <UserX className="w-4 h-4 mr-2" />
+                                    Desativar
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    className="text-success"
+                                    onClick={() => handleToggleAtivo(usuario)}
+                                  >
+                                    <UserCheck className="w-4 h-4 mr-2" />
+                                    Ativar
+                                  </DropdownMenuItem>
+                                )}
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteUsuario(usuario)}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Remover
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Shield className="w-4 h-4 mr-2" />
-                              Alterar Perfil
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            {usuario.ativo ? (
-                              <DropdownMenuItem
-                                className="text-warning"
-                                onClick={() => handleToggleAtivo(usuario)}
-                              >
-                                <UserX className="w-4 h-4 mr-2" />
-                                Desativar
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                className="text-success"
-                                onClick={() => handleToggleAtivo(usuario)}
-                              >
-                                <UserCheck className="w-4 h-4 mr-2" />
-                                Ativar
-                              </DropdownMenuItem>
+
+                          <div className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2">
+                            {usuario.email && (
+                              <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                                <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                                <span className="truncate">{usuario.email}</span>
+                              </div>
                             )}
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteUsuario(usuario)}
+                            {usuario.cargo && (
+                              <div className="text-xs sm:text-sm text-muted-foreground">
+                                Cargo: {usuario.cargo}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border flex items-center justify-between">
+                            <span
+                              className={cn(
+                                "text-xs px-2 py-1 rounded-full",
+                                usuario.ativo
+                                  ? "bg-success/10 text-success"
+                                  : "bg-muted text-muted-foreground"
+                              )}
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Remover
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      <div className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2">
-                        {/* Mostrar cartório para super admins */}
-                        {isSuperAdmin && "cartorio_nome" in usuario && (
-                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span className="truncate">{usuario.cartorio_nome}</span>
+                              {usuario.ativo ? "Ativo" : "Inativo"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(usuario.created_at).toLocaleDateString("pt-BR")}
+                            </span>
                           </div>
-                        )}
-                        {usuario.email && (
-                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-                            <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                            <span className="truncate">{usuario.email}</span>
-                          </div>
-                        )}
-                        {usuario.cargo && (
-                          <div className="text-xs sm:text-sm text-muted-foreground">
-                            Cargo: {usuario.cargo}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border flex items-center justify-between">
-                        <span
-                          className={cn(
-                            "text-xs px-2 py-1 rounded-full",
-                            usuario.ativo
-                              ? "bg-success/10 text-success"
-                              : "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {usuario.ativo ? "Ativo" : "Inativo"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(usuario.created_at).toLocaleDateString("pt-BR")}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 

@@ -22,6 +22,24 @@ export interface UsuarioCartorio {
   cargo: string | null;
 }
 
+// Interface para usuários agregados (usado na listagem global de super admins)
+export interface UsuarioAgregado {
+  user_id: string;
+  nome: string | null;
+  email: string;
+  avatar_url: string | null;
+  cargo: string | null;
+  created_at: string;
+  // Cartórios vinculados
+  cartorios: Array<{
+    id: string; // ID do vínculo (cartorio_usuarios.id)
+    cartorio_id: string;
+    cartorio_nome: string;
+    role: AppRole;
+    ativo: boolean;
+  }>;
+}
+
 export interface PerfilAcesso {
   id: string;
   cartorio_id: string;
@@ -87,12 +105,13 @@ export function useCartorioUsuarios() {
 }
 
 // Hook para listar TODOS os usuários de TODOS os cartórios (somente super admins)
+// Agrupado por user_id para evitar duplicação
 export function useAllUsuarios() {
   const { isSuperAdmin } = useTenant();
 
   return useQuery({
     queryKey: ["all-usuarios"],
-    queryFn: async (): Promise<(UsuarioCartorio & { cartorio_nome?: string })[]> => {
+    queryFn: async (): Promise<UsuarioAgregado[]> => {
       // Buscar todos os vínculos (RLS garante que só super admin pode ver todos)
       const { data: vinculos, error: vinculosError } = await supabase
         .from("cartorio_usuarios")
@@ -107,7 +126,7 @@ export function useAllUsuarios() {
 
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
-        .select("user_id, nome, avatar_url, cargo")
+        .select("user_id, nome, avatar_url, cargo, created_at")
         .in("user_id", userIds);
 
       if (profilesError) throw profilesError;
@@ -122,27 +141,39 @@ export function useAllUsuarios() {
 
       if (cartoriosError) throw cartoriosError;
 
-      // Mapear dados
-      const usuarios = vinculos.map((vinculo) => {
+      // Agrupar por user_id
+      const usuariosMap = new Map<string, UsuarioAgregado>();
+
+      for (const vinculo of vinculos) {
         const profile = profiles?.find((p) => p.user_id === vinculo.user_id);
         const cartorio = cartorios?.find((c) => c.id === vinculo.cartorio_id);
-        return {
+
+        if (!usuariosMap.has(vinculo.user_id)) {
+          usuariosMap.set(vinculo.user_id, {
+            user_id: vinculo.user_id,
+            nome: profile?.nome || null,
+            email: "",
+            avatar_url: profile?.avatar_url || null,
+            cargo: profile?.cargo || null,
+            created_at: profile?.created_at || vinculo.created_at,
+            cartorios: [],
+          });
+        }
+
+        const usuario = usuariosMap.get(vinculo.user_id)!;
+        usuario.cartorios.push({
           id: vinculo.id,
-          user_id: vinculo.user_id,
           cartorio_id: vinculo.cartorio_id,
+          cartorio_nome: cartorio?.nome || "Cartório não encontrado",
           role: vinculo.role,
           ativo: vinculo.ativo,
-          created_at: vinculo.created_at,
-          updated_at: vinculo.updated_at,
-          nome: profile?.nome || null,
-          email: "",
-          avatar_url: profile?.avatar_url || null,
-          cargo: profile?.cargo || null,
-          cartorio_nome: cartorio?.nome || "Cartório não encontrado",
-        };
-      });
+        });
+      }
 
-      return usuarios;
+      // Converter para array e ordenar por data de criação
+      return Array.from(usuariosMap.values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     },
     enabled: isSuperAdmin,
   });
