@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/contexts/TenantContext";
 import {
@@ -39,6 +40,7 @@ import {
 } from "@/hooks/useUsuarios";
 import { NovoUsuarioDialog } from "@/components/usuarios/NovoUsuarioDialog";
 import { NovoPerfilDialog } from "@/components/usuarios/NovoPerfilDialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const roleStyles: Record<string, string> = {
   super_admin: "bg-destructive/10 text-destructive border-destructive/20",
@@ -58,6 +60,7 @@ export default function Usuarios() {
   const [searchTerm, setSearchTerm] = useState("");
   const [novoUsuarioOpen, setNovoUsuarioOpen] = useState(false);
   const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const { cartorioAtivo, isSuperAdmin } = useTenant();
   const { data: usuarios = [], isLoading: loadingUsuarios } = useCartorioUsuarios();
@@ -80,8 +83,8 @@ export default function Usuarios() {
 
   const filteredUsuarios = usuarios.filter(
     (u) =>
-      (u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        u.email?.toLowerCase().includes(searchTerm.toLowerCase()))
+      u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleToggleAtivo = (usuario: UsuarioCartorio) => {
@@ -116,24 +119,36 @@ export default function Usuarios() {
 
   return (
     <MainLayout>
-      <PageHeader title="Usuários e Perfis" description={`Gerenciamento de acessos - ${cartorioAtivo.nome}`}>
+      <PageHeader
+        title="Usuários e Perfis"
+        description={isMobile ? undefined : `Gerenciamento de acessos - ${cartorioAtivo.nome}`}
+      >
         <Button className="gap-2" onClick={() => setNovoUsuarioOpen(true)}>
           <Plus className="w-4 h-4" />
-          Novo Usuário
+          <span className="hidden sm:inline">Novo Usuário</span>
+          <span className="sm:hidden">Novo</span>
         </Button>
       </PageHeader>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
         <Tabs defaultValue="usuarios">
-          <TabsList>
-            <TabsTrigger value="usuarios">Usuários</TabsTrigger>
-            <TabsTrigger value="perfis">Perfis de Acesso</TabsTrigger>
-          </TabsList>
+          {/* Scrollable tabs for mobile */}
+          <ScrollArea className="w-full">
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="usuarios" className="flex-1 sm:flex-none">
+                Usuários
+              </TabsTrigger>
+              <TabsTrigger value="perfis" className="flex-1 sm:flex-none">
+                Perfis de Acesso
+              </TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" className="sm:hidden" />
+          </ScrollArea>
 
-          <TabsContent value="usuarios" className="space-y-4">
+          <TabsContent value="usuarios" className="space-y-4 mt-4">
             {/* Search */}
             <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1 sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome ou e-mail..."
@@ -164,26 +179,26 @@ export default function Usuarios() {
               </div>
             )}
 
-            {/* User Cards */}
+            {/* User Cards - Responsive grid */}
             {!loadingUsuarios && filteredUsuarios.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {filteredUsuarios.map((usuario) => (
                   <Card key={usuario.id} className="hover:border-primary/20 transition-colors">
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 sm:p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
-                            <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0">
+                            <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm sm:text-base">
                               {getInitials(usuario.nome, usuario.email)}
                             </AvatarFallback>
                           </Avatar>
-                          <div>
-                            <h3 className="font-semibold text-foreground">
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">
                               {usuario.nome || "Usuário sem nome"}
                             </h3>
                             <Badge
                               variant="outline"
-                              className={roleStyles[usuario.role] || roleStyles.operacional}
+                              className={cn("text-xs", roleStyles[usuario.role] || roleStyles.operacional)}
                             >
                               {roleLabels[usuario.role] || usuario.role}
                             </Badge>
@@ -191,7 +206,7 @@ export default function Usuarios() {
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -233,21 +248,21 @@ export default function Usuarios() {
                         </DropdownMenu>
                       </div>
 
-                      <div className="mt-4 space-y-2">
+                      <div className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2">
                         {usuario.email && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Mail className="w-4 h-4" />
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                            <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                             <span className="truncate">{usuario.email}</span>
                           </div>
                         )}
                         {usuario.cargo && (
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-xs sm:text-sm text-muted-foreground">
                             Cargo: {usuario.cargo}
                           </div>
                         )}
                       </div>
 
-                      <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                      <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-border flex items-center justify-between">
                         <span
                           className={cn(
                             "text-xs px-2 py-1 rounded-full",
@@ -259,7 +274,7 @@ export default function Usuarios() {
                           {usuario.ativo ? "Ativo" : "Inativo"}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          Desde: {new Date(usuario.created_at).toLocaleDateString("pt-BR")}
+                          {new Date(usuario.created_at).toLocaleDateString("pt-BR")}
                         </span>
                       </div>
                     </CardContent>
@@ -269,11 +284,12 @@ export default function Usuarios() {
             )}
           </TabsContent>
 
-          <TabsContent value="perfis" className="space-y-4">
+          <TabsContent value="perfis" className="space-y-4 mt-4">
             <div className="flex justify-end">
               <Button className="gap-2" onClick={() => setNovoPerfilOpen(true)}>
                 <Plus className="w-4 h-4" />
-                Novo Perfil
+                <span className="hidden sm:inline">Novo Perfil</span>
+                <span className="sm:hidden">Novo</span>
               </Button>
             </div>
 
@@ -295,38 +311,39 @@ export default function Usuarios() {
               </div>
             )}
 
-            {/* Perfis Cards */}
+            {/* Perfis Cards - Responsive grid */}
             {!loadingPerfis && perfis.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {perfis.map((perfil) => (
                   <Card key={perfil.id}>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
+                    <CardHeader className="pb-3 sm:pb-4">
+                      <div className="flex items-center justify-between gap-2">
                         <Badge
                           variant="outline"
-                          className={`bg-${perfil.cor || "primary"}/10 text-${perfil.cor || "primary"} border-${perfil.cor || "primary"}/20`}
+                          className="bg-primary/10 text-primary border-primary/20"
                         >
                           <Shield className="w-3 h-3 mr-1" />
                           {perfil.nome}
                         </Badge>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm">
-                            Editar
+                          <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3">
+                            <span className="hidden sm:inline">Editar</span>
+                            <Edit className="w-4 h-4 sm:hidden" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-destructive hover:text-destructive"
+                            className="h-8 px-2 text-destructive hover:text-destructive"
                             onClick={() => handleDeletePerfil(perfil)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
-                      <CardTitle className="text-base mt-2">{perfil.nome}</CardTitle>
+                      <CardTitle className="text-sm sm:text-base mt-2">{perfil.nome}</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground mb-4">
+                    <CardContent className="pt-0">
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4">
                         {perfil.descricao || "Sem descrição"}
                       </p>
                       <div className="space-y-2">

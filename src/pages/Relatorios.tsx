@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -34,6 +35,7 @@ import {
   YAxis,
   CartesianGrid,
 } from "recharts";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const relatoriosDisponiveis = [
   {
@@ -114,65 +116,74 @@ const formatCurrency = (value: number) => {
 
 export default function Relatorios() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   return (
     <MainLayout>
       <PageHeader title="Relatórios" description="Análises e relatórios gerenciais">
-        <div className="flex items-center gap-2">
-          <Select defaultValue="janeiro">
-            <SelectTrigger className="w-40">
-              <Calendar className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="janeiro">Janeiro 2024</SelectItem>
-              <SelectItem value="dezembro">Dezembro 2023</SelectItem>
-              <SelectItem value="trimestre">4º Trimestre 2023</SelectItem>
-              <SelectItem value="anual">Ano 2023</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select defaultValue="janeiro">
+          <SelectTrigger className="w-32 sm:w-40">
+            <Calendar className="w-4 h-4 mr-1 sm:mr-2" />
+            <SelectValue placeholder="Período" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="janeiro">Janeiro 2024</SelectItem>
+            <SelectItem value="dezembro">Dezembro 2023</SelectItem>
+            <SelectItem value="trimestre">4º Trimestre 2023</SelectItem>
+            <SelectItem value="anual">Ano 2023</SelectItem>
+          </SelectContent>
+        </Select>
       </PageHeader>
 
-      <div className="flex-1 p-6 space-y-6">
-        <Tabs defaultValue="gerar" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="gerar">Gerar Relatório</TabsTrigger>
-            <TabsTrigger value="receitas">Receitas por Ato</TabsTrigger>
-            <TabsTrigger value="produtividade">Produtividade</TabsTrigger>
-          </TabsList>
+      <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <Tabs defaultValue="gerar" className="space-y-4 sm:space-y-6">
+          {/* Scrollable tabs for mobile */}
+          <ScrollArea className="w-full">
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="gerar" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Gerar Relatório
+              </TabsTrigger>
+              <TabsTrigger value="receitas" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Receitas por Ato
+              </TabsTrigger>
+              <TabsTrigger value="produtividade" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Produtividade
+              </TabsTrigger>
+            </TabsList>
+            <ScrollBar orientation="horizontal" className="sm:hidden" />
+          </ScrollArea>
 
           <TabsContent value="gerar">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {relatoriosDisponiveis.map((relatorio) => (
                 <Card
                   key={relatorio.id}
                   className="cursor-pointer hover:border-primary/30 hover:shadow-md transition-all"
                   onClick={() => setSelectedReport(relatorio.id)}
                 >
-                  <CardHeader>
+                  <CardHeader className="pb-3 sm:pb-4">
                     <div className="flex items-start justify-between">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                        <relatorio.icon className="w-5 h-5" />
+                      <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary">
+                        <relatorio.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon">
-                          <Download className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+                          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
-                          <Printer className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 hidden sm:flex">
+                          <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </Button>
                       </div>
                     </div>
-                    <CardTitle className="text-base mt-3">{relatorio.titulo}</CardTitle>
-                    <CardDescription>{relatorio.descricao}</CardDescription>
+                    <CardTitle className="text-sm sm:text-base mt-2 sm:mt-3">{relatorio.titulo}</CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">{relatorio.descricao}</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="pt-0">
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground capitalize">
                         {relatorio.tipo}
                       </span>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs sm:text-sm">
                         Gerar
                       </Button>
                     </div>
@@ -183,25 +194,25 @@ export default function Relatorios() {
           </TabsContent>
 
           <TabsContent value="receitas">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Distribuição por Tipo de Ato</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Distribuição por Tipo de Ato</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80">
+                  <div className="h-64 sm:h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
                         <Pie
                           data={receitasPorAto}
                           cx="50%"
                           cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
+                          innerRadius={isMobile ? 40 : 60}
+                          outerRadius={isMobile ? 70 : 100}
                           paddingAngle={2}
                           dataKey="valor"
                           nameKey="nome"
-                          label={({ nome, porcentagem }) => `${nome}: ${porcentagem}%`}
+                          label={isMobile ? false : ({ nome, porcentagem }) => `${nome}: ${porcentagem}%`}
                         >
                           {receitasPorAto.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -224,21 +235,21 @@ export default function Relatorios() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Detalhamento</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Detalhamento</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3 sm:space-y-4">
                     {receitasPorAto.map((item, index) => (
                       <div key={item.nome} className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
                           <div
-                            className="w-3 h-3 rounded-full"
+                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
                             style={{ backgroundColor: COLORS[index] }}
                           />
-                          <span className="font-medium">{item.nome}</span>
+                          <span className="font-medium text-sm sm:text-base">{item.nome}</span>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold">{formatCurrency(item.valor)}</p>
+                          <p className="font-bold text-sm sm:text-base">{formatCurrency(item.valor)}</p>
                           <p className="text-xs text-muted-foreground">{item.porcentagem}%</p>
                         </div>
                       </div>
@@ -252,22 +263,30 @@ export default function Relatorios() {
           <TabsContent value="produtividade">
             <Card>
               <CardHeader>
-                <CardTitle>Produtividade por Colaborador</CardTitle>
-                <CardDescription>Quantidade de atos e receita gerada no período</CardDescription>
+                <CardTitle className="text-base sm:text-lg">Produtividade por Colaborador</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Quantidade de atos e receita gerada no período
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
+                <div className="h-64 sm:h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={produtividadeMensal} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={false} />
-                      <XAxis type="number" className="text-xs fill-muted-foreground" tickLine={false} axisLine={false} />
+                      <XAxis
+                        type="number"
+                        className="text-xs fill-muted-foreground"
+                        tickLine={false}
+                        axisLine={false}
+                      />
                       <YAxis
                         type="category"
                         dataKey="colaborador"
                         className="text-xs fill-muted-foreground"
                         tickLine={false}
                         axisLine={false}
-                        width={100}
+                        width={isMobile ? 70 : 100}
+                        tick={{ fontSize: isMobile ? 10 : 12 }}
                       />
                       <Tooltip
                         formatter={(value: number, name: string) => [

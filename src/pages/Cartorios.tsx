@@ -5,14 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,12 +26,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ResponsiveTable, type Column } from "@/components/ui/responsive-table";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+interface Cartorio {
+  id: string;
+  nome: string;
+  cnpj: string | null;
+  email: string | null;
+  telefone: string | null;
+  ativo: boolean;
+}
 
 export default function Cartorios() {
   const { isSuperAdmin, isLoading: tenantLoading } = useTenant();
   const { data: cartorios, isLoading } = useCartorios();
   const updateCartorio = useUpdateCartorio();
   const deleteCartorio = useDeleteCartorio();
+  const isMobile = useIsMobile();
 
   const [novoDialogOpen, setNovoDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -67,6 +71,78 @@ export default function Cartorios() {
     setDeleteDialogOpen(true);
   };
 
+  const columns: Column<Cartorio>[] = [
+    {
+      key: "nome",
+      header: "Nome",
+      render: (item) => <span className="font-medium">{item.nome}</span>,
+    },
+    {
+      key: "cnpj",
+      header: "CNPJ",
+      hideOnMobile: true,
+      render: (item) => (
+        <span className="text-muted-foreground">{item.cnpj || "—"}</span>
+      ),
+    },
+    {
+      key: "email",
+      header: "E-mail",
+      render: (item) => (
+        <span className="text-muted-foreground truncate">{item.email || "—"}</span>
+      ),
+    },
+    {
+      key: "telefone",
+      header: "Telefone",
+      hideOnMobile: true,
+      render: (item) => (
+        <span className="text-muted-foreground">{item.telefone || "—"}</span>
+      ),
+    },
+    {
+      key: "ativo",
+      header: "Status",
+      render: (item) => (
+        <Badge variant={item.ativo ? "default" : "secondary"}>
+          {item.ativo ? "Ativo" : "Inativo"}
+        </Badge>
+      ),
+    },
+  ];
+
+  const renderActions = (cartorio: Cartorio) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <MoreHorizontal className="w-4 h-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem>
+          <Pencil className="w-4 h-4 mr-2" />
+          Editar
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <Users className="w-4 h-4 mr-2" />
+          Gerenciar Usuários
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleToggleStatus(cartorio.id, cartorio.ativo)}>
+          {cartorio.ativo ? "Desativar" : "Ativar"}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-destructive"
+          onClick={() => confirmDelete(cartorio.id)}
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Excluir
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const cartoriosData = (cartorios || []) as Cartorio[];
+
   return (
     <MainLayout>
       <PageHeader
@@ -74,9 +150,9 @@ export default function Cartorios() {
         description="Gerencie os cartórios cadastrados no sistema"
       />
 
-      <div className="space-y-6">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Cartórios</CardTitle>
@@ -126,96 +202,29 @@ export default function Cartorios() {
         <div className="flex justify-end">
           <Button onClick={() => setNovoDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
-            Novo Cartório
+            <span className="hidden sm:inline">Novo Cartório</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
 
-        {/* Table */}
+        {/* Table / Cards */}
         <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>CNPJ</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-36" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : cartorios?.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      Nenhum cartório cadastrado
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  cartorios?.map((cartorio) => (
-                    <TableRow key={cartorio.id}>
-                      <TableCell className="font-medium">{cartorio.nome}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {cartorio.cnpj || "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {cartorio.email || "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {cartorio.telefone || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={cartorio.ativo ? "default" : "secondary"}>
-                          {cartorio.ativo ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Pencil className="w-4 h-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Users className="w-4 h-4 mr-2" />
-                              Gerenciar Usuários
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(cartorio.id, cartorio.ativo)}
-                            >
-                              {cartorio.ativo ? "Desativar" : "Ativar"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => confirmDelete(cartorio.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+          <CardContent className="p-3 sm:p-6">
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : (
+              <ResponsiveTable
+                data={cartoriosData}
+                columns={columns}
+                keyExtractor={(item) => item.id}
+                renderActions={renderActions}
+                emptyMessage="Nenhum cartório cadastrado"
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -223,7 +232,7 @@ export default function Cartorios() {
       <NovoCartorioDialog open={novoDialogOpen} onOpenChange={setNovoDialogOpen} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir Cartório</AlertDialogTitle>
             <AlertDialogDescription>
@@ -231,11 +240,11 @@ export default function Cartorios() {
               e todos os dados associados serão perdidos.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir
             </AlertDialogAction>
