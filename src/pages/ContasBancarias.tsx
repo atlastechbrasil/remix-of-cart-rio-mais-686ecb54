@@ -14,6 +14,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { NovaContaDialog } from "@/components/contas/NovaContaDialog";
+import { EditarContaDialog } from "@/components/contas/EditarContaDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -74,6 +75,7 @@ export default function ContasBancarias() {
   const { data: contas, isLoading } = useContasBancarias();
   const deleteConta = useDeleteContaBancaria();
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editarConta, setEditarConta] = useState<ContaBancaria | null>(null);
 
   const contasAtivas = contas?.filter((c) => c.ativo) || [];
   const totalSaldo = contasAtivas.reduce((acc, c) => acc + Number(c.saldo), 0);
@@ -191,7 +193,7 @@ export default function ContasBancarias() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEditarConta(conta)}>
                           <Edit className="w-4 h-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
@@ -309,10 +311,10 @@ export default function ContasBancarias() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setEditarConta(conta)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => setDeleteId(conta.id)}
@@ -356,6 +358,12 @@ export default function ContasBancarias() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditarContaDialog
+        open={!!editarConta}
+        onOpenChange={(open) => !open && setEditarConta(null)}
+        conta={editarConta}
+      />
     </MainLayout>
   );
 }
