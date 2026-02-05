@@ -47,32 +47,32 @@ export function StatCard({
 
   return (
     <div className="stat-card animate-fade-in">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
+          <p className="mt-1 sm:mt-2 text-lg sm:text-2xl font-bold text-foreground truncate">{value}</p>
           {trend && trend.value !== 0 && (
-            <div className="flex items-center gap-1 mt-2">
+            <div className="flex items-center gap-1 mt-1 sm:mt-2 flex-wrap">
               {trend.isPositive ? (
-                <TrendingUp className="w-4 h-4 text-success" />
+                <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-success flex-shrink-0" />
               ) : (
-                <TrendingDown className="w-4 h-4 text-destructive" />
+                <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-destructive flex-shrink-0" />
               )}
               <span
                 className={cn(
-                  "text-sm font-medium",
+                  "text-xs sm:text-sm font-medium",
                   trend.isPositive ? "text-success" : "text-destructive"
                 )}
               >
                 {trend.isPositive ? "+" : ""}
                 {trend.value.toFixed(1)}%
               </span>
-              <span className="text-sm text-muted-foreground">vs mês anterior</span>
+              <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">vs mês anterior</span>
             </div>
           )}
         </div>
-        <div className={cn("p-3 rounded-lg", iconStyles[variant])}>
-          <Icon className="w-5 h-5" />
+        <div className={cn("p-2 sm:p-3 rounded-lg flex-shrink-0", iconStyles[variant])}>
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
       </div>
     </div>
