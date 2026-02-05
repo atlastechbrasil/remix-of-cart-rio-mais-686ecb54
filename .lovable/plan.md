@@ -158,12 +158,12 @@ className="sm:max-w-lg w-full h-full sm:h-auto"
 10. [x] Lançamentos
 11. [x] Contas Bancárias
 
-### Fase 4: Páginas Secundárias
-12. [ ] Extratos
-13. [ ] Usuários
-14. [ ] Cartórios
-15. [ ] Configurações
-16. [ ] Relatórios
+### Fase 4: Páginas Secundárias ✅
+12. [x] Extratos - ResponsiveTable, filtros collapsible, grids 2x2
+13. [x] Usuários - Tabs scrollable, grids responsivos, cards compactos
+14. [x] Cartórios - ResponsiveTable, stats cards responsivos
+15. [x] Configurações - Tabs scrollable, formulários full-width mobile
+16. [x] Relatórios - Tabs scrollable, grids responsivos, gráficos adaptados
 
 ### Fase 5: Testes e Refinamentos
 17. [ ] Testar em diferentes dispositivos
