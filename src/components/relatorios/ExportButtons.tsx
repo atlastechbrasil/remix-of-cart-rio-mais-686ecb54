@@ -16,6 +16,7 @@ import type {
   LancamentoRelatorio,
   ProdutividadeResponsavel,
   DadosConciliacao,
+  EvolucaoMensal,
 } from "@/types/relatorios";
 
 interface ExportButtonsProps {
@@ -24,6 +25,7 @@ interface ExportButtonsProps {
   resumo?: ResumoFinanceiro;
   receitasPorCategoria?: DadosPorCategoria[];
   despesasPorCategoria?: DadosPorCategoria[];
+  evolucaoMensal?: EvolucaoMensal[];
   produtividade?: ProdutividadeResponsavel[];
   conciliacao?: DadosConciliacao;
   lancamentos?: LancamentoRelatorio[];
@@ -37,6 +39,7 @@ export function ExportButtons({
   resumo,
   receitasPorCategoria,
   despesasPorCategoria,
+  evolucaoMensal,
   produtividade,
   conciliacao,
   lancamentos,
@@ -54,6 +57,7 @@ export function ExportButtons({
         resumo,
         receitasPorCategoria,
         despesasPorCategoria,
+        evolucaoMensal,
         produtividade,
         conciliacao,
         lancamentos,
@@ -76,6 +80,7 @@ export function ExportButtons({
         resumo,
         receitasPorCategoria,
         despesasPorCategoria,
+        evolucaoMensal,
         produtividade,
         conciliacao,
         lancamentos,

@@ -148,6 +148,7 @@ export default function Relatorios() {
             resumo={resumo}
             receitasPorCategoria={receitasPorCategoria}
             despesasPorCategoria={despesasPorCategoria}
+            evolucaoMensal={evolucaoMensal}
             produtividade={produtividade}
             conciliacao={conciliacao}
             lancamentos={lancamentos}
