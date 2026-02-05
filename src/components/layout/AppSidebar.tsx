@@ -15,6 +15,8 @@ import {
   Landmark,
   CheckCircle2,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +25,9 @@ import { toast } from "sonner";
 import fincartLogo from "@/assets/fincart-logo.png";
 import fincartIcon from "@/assets/fincart-icon.png";
 import { CartorioSelector } from "./CartorioSelector";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MenuItem {
   title: string;
@@ -90,23 +95,22 @@ const menuItems: MenuItem[] = [
   },
 ];
 
-export function AppSidebar() {
-  const [collapsed, setCollapsed] = useState(() => {
-    const saved = localStorage.getItem('sidebar-collapsed');
-    return saved === 'true';
-  });
+interface SidebarContentProps {
+  collapsed: boolean;
+  onNavClick?: () => void;
+  showCollapseButton?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+function SidebarContentInner({
+  collapsed,
+  onNavClick,
+  showCollapseButton = true,
+  onToggleCollapse,
+}: SidebarContentProps) {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { isSuperAdmin } = useTenant();
-
-  useEffect(() => {
-    localStorage.setItem('sidebar-collapsed', String(collapsed));
-  }, [collapsed]);
-
-  const handleNavClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setCollapsed(true);
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -118,12 +122,7 @@ export function AppSidebar() {
     : user?.email?.slice(0, 2).toUpperCase() || "U";
 
   return (
-    <aside
-      className={cn(
-        "flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 h-screen sticky top-0",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
+    <>
       {/* Logo */}
       <div className={cn(
         "flex items-center justify-center border-b border-sidebar-border",
@@ -162,7 +161,7 @@ export function AppSidebar() {
                 <li key={item.path}>
                   <Link
                     to={item.path}
-                    onClick={handleNavClick}
+                    onClick={onNavClick}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200",
                       isActive
@@ -181,22 +180,24 @@ export function AppSidebar() {
         </ul>
       </nav>
 
-      {/* Collapse Button */}
-      <div className="p-3 border-t border-sidebar-border">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full p-2 rounded-md hover:bg-sidebar-accent/50 transition-colors"
-        >
-          {collapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <>
-              <ChevronLeft className="w-5 h-5" />
-              <span className="ml-2 text-sm">Recolher</span>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Collapse Button - Desktop only */}
+      {showCollapseButton && (
+        <div className="p-3 border-t border-sidebar-border">
+          <button
+            onClick={onToggleCollapse}
+            className="flex items-center justify-center w-full p-2 rounded-md hover:bg-sidebar-accent/50 transition-colors"
+          >
+            {collapsed ? (
+              <ChevronRight className="w-5 h-5" />
+            ) : (
+              <>
+                <ChevronLeft className="w-5 h-5" />
+                <span className="ml-2 text-sm">Recolher</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* User Info */}
       {!collapsed && (
@@ -220,6 +221,76 @@ export function AppSidebar() {
           </div>
         </div>
       )}
+    </>
+  );
+}
+
+// Mobile Sidebar (Sheet)
+export function MobileSidebar() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  // Close sidebar on navigation
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="lg:hidden"
+          aria-label="Abrir menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent 
+        side="left" 
+        className="w-72 p-0 bg-sidebar text-sidebar-foreground border-sidebar-border"
+      >
+        <div className="flex flex-col h-full">
+          <SidebarContentInner
+            collapsed={false}
+            onNavClick={() => setOpen(false)}
+            showCollapseButton={false}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// Desktop Sidebar
+export function DesktopSidebar() {
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar-collapsed');
+    return saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sidebar-collapsed', String(collapsed));
+  }, [collapsed]);
+
+  return (
+    <aside
+      className={cn(
+        "hidden lg:flex flex-col bg-sidebar text-sidebar-foreground transition-all duration-300 h-screen sticky top-0",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
+      <SidebarContentInner
+        collapsed={collapsed}
+        showCollapseButton={true}
+        onToggleCollapse={() => setCollapsed(!collapsed)}
+      />
     </aside>
   );
+}
+
+// Main AppSidebar - renders appropriate version based on screen size
+export function AppSidebar() {
+  return <DesktopSidebar />;
 }

@@ -141,11 +141,11 @@ className="sm:max-w-lg w-full h-full sm:h-auto"
 
 ## Ordem de Implementação
 
-### Fase 1: Layout Base
-1. [ ] Criar componente MobileNav (hamburger + sheet)
-2. [ ] Adaptar AppSidebar para responsivo
-3. [ ] Adaptar MainLayout
-4. [ ] Adaptar PageHeader
+### Fase 1: Layout Base ✅
+1. [x] Criar componente MobileNav (hamburger + sheet) - MobileHeader.tsx
+2. [x] Adaptar AppSidebar para responsivo - Sheet mobile + sidebar desktop
+3. [x] Adaptar MainLayout - Condicional desktop/mobile
+4. [x] Adaptar PageHeader - Responsivo com breakpoints
 
 ### Fase 2: Componentes Compartilhados
 5. [ ] Criar componente ResponsiveTable (tabela/cards)

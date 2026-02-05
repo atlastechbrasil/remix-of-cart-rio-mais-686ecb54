@@ -23,7 +23,7 @@ function HeaderCartorioSelector() {
 
   // Sempre verificar loading primeiro
   if (isLoading) {
-    return <Skeleton className="h-9 w-48 hidden sm:block" />;
+    return <Skeleton className="h-9 w-48 hidden md:block" />;
   }
 
   // Sem cartórios disponíveis
@@ -36,7 +36,7 @@ function HeaderCartorioSelector() {
     if (!cartorioAtivo) return null;
     
     return (
-      <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground border rounded-md">
+      <div className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-muted-foreground border rounded-md">
         <Building2 className="w-4 h-4" />
         <span className="truncate max-w-[200px]">{cartorioAtivo.nome}</span>
       </div>
@@ -46,7 +46,7 @@ function HeaderCartorioSelector() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="hidden sm:flex gap-2 max-w-[250px]">
+        <Button variant="outline" size="sm" className="hidden md:flex gap-2 max-w-[250px]">
           <Building2 className="w-4 h-4 flex-shrink-0" />
           <span className="truncate">{cartorioAtivo?.nome || "Selecione"}</span>
           <ChevronDown className="w-4 h-4 flex-shrink-0 opacity-50" />
@@ -76,29 +76,31 @@ function HeaderCartorioSelector() {
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   return (
     <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-      <div className="flex items-center justify-between h-16 px-6">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+      <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:h-16 sm:py-0 sm:px-6">
+        {/* Title and Description */}
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg font-semibold text-foreground sm:text-xl truncate">{title}</h1>
           {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-xs text-muted-foreground sm:text-sm truncate">{description}</p>
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* Search */}
-          <div className="relative hidden md:block">
+        {/* Actions */}
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Search - hidden on mobile */}
+          <div className="relative hidden lg:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Buscar..."
-              className="w-64 pl-9 bg-muted/50 border-0 focus-visible:ring-1"
+              className="w-48 xl:w-64 pl-9 bg-muted/50 border-0 focus-visible:ring-1"
             />
           </div>
 
-          {/* Cartório Selector */}
+          {/* Cartório Selector - hidden on mobile (shown in MobileHeader) */}
           <HeaderCartorioSelector />
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
+          {/* Notifications - hidden on mobile (shown in MobileHeader) */}
+          <Button variant="ghost" size="icon" className="relative hidden sm:flex">
             <Bell className="w-5 h-5" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
           </Button>
