@@ -8,6 +8,7 @@ import { TenantProvider } from "@/contexts/TenantContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Lancamentos from "./pages/Lancamentos";
 import Registros from "./pages/Registros";
 import Repasses from "./pages/Repasses";
@@ -32,6 +33,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/conciliacao" element={<ProtectedRoute><Conciliacao /></ProtectedRoute>} />
               <Route path="/contas" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />

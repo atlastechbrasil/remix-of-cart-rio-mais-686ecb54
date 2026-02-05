@@ -81,8 +81,8 @@ export default function Auth() {
   const handleForgotPassword = async (data: ForgotPasswordFormData) => {
     setIsLoading(true);
     
-    // First, trigger Supabase password reset to generate the token
-    const redirectUrl = `${window.location.origin}/auth`;
+    // Use the reset-password page as redirect URL
+    const redirectUrl = `${window.location.origin}/reset-password`;
     
     const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(data.email, {
       redirectTo: redirectUrl,
