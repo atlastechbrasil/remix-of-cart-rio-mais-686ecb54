@@ -24,7 +24,14 @@ import fincartLogo from "@/assets/fincart-logo.png";
 import fincartIcon from "@/assets/fincart-icon.png";
 import { CartorioSelector } from "./CartorioSelector";
 
-const menuItems = [
+interface MenuItem {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  path: string;
+  superAdminOnly?: boolean;
+}
+
+const menuItems: MenuItem[] = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
@@ -64,6 +71,12 @@ const menuItems = [
     title: "Relatórios",
     icon: BarChart3,
     path: "/relatorios",
+  },
+  {
+    title: "Cartórios",
+    icon: Landmark,
+    path: "/cartorios",
+    superAdminOnly: true,
   },
   {
     title: "Usuários",
@@ -141,28 +154,30 @@ export function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  onClick={handleNavClick}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200",
-                    isActive
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-                  )}
-                >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
-                  {!collapsed && (
-                    <span className="text-sm font-medium">{item.title}</span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
+          {menuItems
+            .filter((item) => !item.superAdminOnly || isSuperAdmin)
+            .map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    onClick={handleNavClick}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-md transition-all duration-200",
+                      isActive
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+                    )}
+                  >
+                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                    {!collapsed && (
+                      <span className="text-sm font-medium">{item.title}</span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
         </ul>
       </nav>
 
