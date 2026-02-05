@@ -14,6 +14,7 @@ import { Plus, MoreHorizontal, Building2, Pencil, Trash2, Users } from "lucide-r
 import { useTenant } from "@/contexts/TenantContext";
 import { useCartorios, useUpdateCartorio, useDeleteCartorio } from "@/hooks/useCartorios";
 import { NovoCartorioDialog } from "@/components/cartorios/NovoCartorioDialog";
+import { EditarCartorioDialog } from "@/components/cartorios/EditarCartorioDialog";
 import { GerenciarUsuariosDialog } from "@/components/cartorios/GerenciarUsuariosDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Navigate } from "react-router-dom";
@@ -47,6 +48,8 @@ export default function Cartorios() {
   const isMobile = useIsMobile();
 
   const [novoDialogOpen, setNovoDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedCartorioForEdit, setSelectedCartorioForEdit] = useState<Cartorio | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCartorioId, setSelectedCartorioId] = useState<string | null>(null);
   const [usuariosDialogOpen, setUsuariosDialogOpen] = useState(false);
@@ -72,6 +75,11 @@ export default function Cartorios() {
   const confirmDelete = (id: string) => {
     setSelectedCartorioId(id);
     setDeleteDialogOpen(true);
+  };
+
+  const openEditDialog = (cartorio: Cartorio) => {
+    setSelectedCartorioForEdit(cartorio);
+    setEditDialogOpen(true);
   };
 
   const openUsuariosDialog = (cartorio: Cartorio) => {
@@ -127,7 +135,7 @@ export default function Cartorios() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openEditDialog(cartorio)}>
           <Pencil className="w-4 h-4 mr-2" />
           Editar
         </DropdownMenuItem>
@@ -238,6 +246,12 @@ export default function Cartorios() {
       </div>
 
       <NovoCartorioDialog open={novoDialogOpen} onOpenChange={setNovoDialogOpen} />
+
+      <EditarCartorioDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        cartorio={selectedCartorioForEdit}
+      />
 
       <GerenciarUsuariosDialog
         open={usuariosDialogOpen}
