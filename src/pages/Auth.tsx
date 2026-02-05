@@ -157,8 +157,6 @@ export default function Auth() {
                           placeholder="seu@email.com"
                           autoComplete="email"
                           {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(e.target.value)}
                         />
                       </FormControl>
                       <FormMessage />
