@@ -1,41 +1,36 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
-  Download,
-  FileText,
   TrendingUp,
   Users,
-  Calendar,
-  BarChart3,
   PieChart,
-  Printer,
+  BarChart3,
+  FileText,
+  Calendar,
+  CheckCircle,
 } from "lucide-react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { FiltrosRelatorio } from "@/components/relatorios/FiltrosRelatorio";
+import { IndicadoresResumo } from "@/components/relatorios/IndicadoresResumo";
+import { ReceitasPorCategoriaChart } from "@/components/relatorios/ReceitasPorCategoriaChart";
+import { EvolucaoMensalChart } from "@/components/relatorios/EvolucaoMensalChart";
+import { ProdutividadeChart } from "@/components/relatorios/ProdutividadeChart";
+import { RelatorioCard } from "@/components/relatorios/RelatorioCard";
+import { ExportButtons } from "@/components/relatorios/ExportButtons";
+import { TabelaLancamentos } from "@/components/relatorios/TabelaLancamentos";
 import {
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Legend,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from "recharts";
-import { useIsMobile } from "@/hooks/use-mobile";
+  useResumoFinanceiro,
+  useDadosPorCategoria,
+  useEvolucaoMensal,
+  useProdutividade,
+  useDadosConciliacao,
+  useLancamentosRelatorio,
+} from "@/hooks/useRelatorios";
+import type { FiltrosRelatorio as FiltrosRelatorioType } from "@/types/relatorios";
 
 const relatoriosDisponiveis = [
   {
@@ -48,267 +43,308 @@ const relatoriosDisponiveis = [
   {
     id: "produtividade",
     titulo: "Relatório de Produtividade",
-    descricao: "Análise de atos realizados por colaborador e período",
+    descricao: "Análise de lançamentos por responsável e período",
     icon: Users,
     tipo: "operacional",
   },
   {
-    id: "receitas-por-ato",
-    titulo: "Receitas por Tipo de Ato",
-    descricao: "Detalhamento das receitas agrupadas por tipo de ato",
+    id: "receitas-por-categoria",
+    titulo: "Receitas por Categoria",
+    descricao: "Detalhamento das receitas agrupadas por categoria",
     icon: PieChart,
     tipo: "financeiro",
   },
   {
-    id: "repasses-periodo",
-    titulo: "Repasses do Período",
-    descricao: "Valores repassados a entidades e órgãos reguladores",
+    id: "despesas-por-categoria",
+    titulo: "Despesas por Categoria",
+    descricao: "Detalhamento das despesas agrupadas por categoria",
     icon: BarChart3,
     tipo: "financeiro",
   },
   {
-    id: "atos-periodo",
-    titulo: "Atos do Período",
-    descricao: "Lista completa de atos realizados no período selecionado",
+    id: "conciliacao",
+    titulo: "Relatório de Conciliação",
+    descricao: "Status de conciliação e divergências encontradas",
+    icon: CheckCircle,
+    tipo: "operacional",
+  },
+  {
+    id: "lancamentos",
+    titulo: "Lista de Lançamentos",
+    descricao: "Lista completa de lançamentos do período selecionado",
     icon: FileText,
     tipo: "operacional",
   },
   {
     id: "comparativo",
     titulo: "Comparativo Mensal",
-    descricao: "Análise comparativa entre períodos",
+    descricao: "Análise comparativa de evolução ao longo dos meses",
     icon: Calendar,
     tipo: "gerencial",
   },
 ];
 
-const receitasPorAto = [
-  { nome: "Escritura", valor: 85000, porcentagem: 45.8 },
-  { nome: "Procuração", valor: 45000, porcentagem: 24.3 },
-  { nome: "Testamento", valor: 22500, porcentagem: 12.1 },
-  { nome: "Inventário", valor: 18000, porcentagem: 9.7 },
-  { nome: "Outros", valor: 15000, porcentagem: 8.1 },
-];
-
-const produtividadeMensal = [
-  { colaborador: "Dr. Carlos", atos: 145, receita: 42500 },
-  { colaborador: "Dra. Ana", atos: 132, receita: 38000 },
-  { colaborador: "Dra. Lucia", atos: 128, receita: 35500 },
-  { colaborador: "Pedro Lima", atos: 98, receita: 28000 },
-  { colaborador: "Paula Santos", atos: 245, receita: 12000 },
-];
-
-const COLORS = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 0,
-  }).format(value);
-};
-
 export default function Relatorios() {
-  const [selectedReport, setSelectedReport] = useState<string | null>(null);
-  const isMobile = useIsMobile();
+  const hoje = new Date();
+  const [filtros, setFiltros] = useState<FiltrosRelatorioType>({
+    dataInicio: startOfMonth(hoje),
+    dataFim: endOfMonth(hoje),
+    tipoLancamento: "todos",
+    statusConciliacao: "todos",
+    categoria: null,
+    responsavel: null,
+  });
+
+  const [activeTab, setActiveTab] = useState("visao-geral");
+
+  // Queries
+  const { data: resumo, isLoading: isLoadingResumo } = useResumoFinanceiro(filtros);
+  const { data: receitasPorCategoria, isLoading: isLoadingReceitas } = useDadosPorCategoria(filtros, "receita");
+  const { data: despesasPorCategoria, isLoading: isLoadingDespesas } = useDadosPorCategoria(filtros, "despesa");
+  const { data: evolucaoMensal, isLoading: isLoadingEvolucao } = useEvolucaoMensal(filtros);
+  const { data: produtividade, isLoading: isLoadingProdutividade } = useProdutividade(filtros);
+  const { data: conciliacao, isLoading: isLoadingConciliacao } = useDadosConciliacao(filtros);
+  const { data: lancamentos, isLoading: isLoadingLancamentos } = useLancamentosRelatorio(filtros);
+
+  const periodoTexto = useMemo(() => {
+    if (filtros.dataInicio && filtros.dataFim) {
+      return `${format(filtros.dataInicio, "dd/MM/yyyy", { locale: ptBR })} a ${format(filtros.dataFim, "dd/MM/yyyy", { locale: ptBR })}`;
+    }
+    return "Período não definido";
+  }, [filtros.dataInicio, filtros.dataFim]);
+
+  const handleGerarRelatorio = (id: string) => {
+    switch (id) {
+      case "financeiro-mensal":
+      case "lancamentos":
+        setActiveTab("lancamentos");
+        break;
+      case "produtividade":
+        setActiveTab("produtividade");
+        break;
+      case "receitas-por-categoria":
+      case "despesas-por-categoria":
+        setActiveTab("categorias");
+        break;
+      case "comparativo":
+        setActiveTab("evolucao");
+        break;
+      case "conciliacao":
+        setActiveTab("visao-geral");
+        break;
+      default:
+        setActiveTab("visao-geral");
+    }
+  };
 
   return (
     <MainLayout>
       <PageHeader title="Relatórios" description="Análises e relatórios gerenciais">
-        <Select defaultValue="janeiro">
-          <SelectTrigger className="w-32 sm:w-40">
-            <Calendar className="w-4 h-4 mr-1 sm:mr-2" />
-            <SelectValue placeholder="Período" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="janeiro">Janeiro 2024</SelectItem>
-            <SelectItem value="dezembro">Dezembro 2023</SelectItem>
-            <SelectItem value="trimestre">4º Trimestre 2023</SelectItem>
-            <SelectItem value="anual">Ano 2023</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <FiltrosRelatorio filtros={filtros} onFiltrosChange={setFiltros} />
+          <ExportButtons
+            titulo="Relatório Financeiro"
+            periodo={periodoTexto}
+            resumo={resumo}
+            receitasPorCategoria={receitasPorCategoria}
+            despesasPorCategoria={despesasPorCategoria}
+            produtividade={produtividade}
+            conciliacao={conciliacao}
+            lancamentos={lancamentos}
+            disabled={isLoadingResumo}
+          />
+        </div>
       </PageHeader>
 
       <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
-        <Tabs defaultValue="gerar" className="space-y-4 sm:space-y-6">
+        {/* Período selecionado */}
+        <div className="text-sm text-muted-foreground">
+          Período: <span className="font-medium text-foreground">{periodoTexto}</span>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 sm:space-y-6">
           {/* Scrollable tabs for mobile */}
           <ScrollArea className="w-full">
-            <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="gerar" className="flex-1 sm:flex-none text-xs sm:text-sm">
-                Gerar Relatório
+            <TabsList className="w-full sm:w-auto inline-flex">
+              <TabsTrigger value="visao-geral" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Visão Geral
               </TabsTrigger>
-              <TabsTrigger value="receitas" className="flex-1 sm:flex-none text-xs sm:text-sm">
-                Receitas por Ato
+              <TabsTrigger value="categorias" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Por Categoria
+              </TabsTrigger>
+              <TabsTrigger value="evolucao" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Evolução
               </TabsTrigger>
               <TabsTrigger value="produtividade" className="flex-1 sm:flex-none text-xs sm:text-sm">
                 Produtividade
+              </TabsTrigger>
+              <TabsTrigger value="lancamentos" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Lançamentos
+              </TabsTrigger>
+              <TabsTrigger value="gerar" className="flex-1 sm:flex-none text-xs sm:text-sm">
+                Gerar Relatório
               </TabsTrigger>
             </TabsList>
             <ScrollBar orientation="horizontal" className="sm:hidden" />
           </ScrollArea>
 
+          {/* Tab: Visão Geral */}
+          <TabsContent value="visao-geral" className="space-y-4 sm:space-y-6">
+            <IndicadoresResumo
+              resumo={resumo}
+              conciliacao={conciliacao}
+              isLoading={isLoadingResumo || isLoadingConciliacao}
+            />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <ReceitasPorCategoriaChart
+                data={receitasPorCategoria || []}
+                isLoading={isLoadingReceitas}
+                titulo="Receitas por Categoria"
+                tipo="receita"
+              />
+              <ReceitasPorCategoriaChart
+                data={despesasPorCategoria || []}
+                isLoading={isLoadingDespesas}
+                titulo="Despesas por Categoria"
+                tipo="despesa"
+              />
+            </div>
+
+            <EvolucaoMensalChart data={evolucaoMensal || []} isLoading={isLoadingEvolucao} />
+          </TabsContent>
+
+          {/* Tab: Por Categoria */}
+          <TabsContent value="categorias" className="space-y-4 sm:space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <ReceitasPorCategoriaChart
+                data={receitasPorCategoria || []}
+                isLoading={isLoadingReceitas}
+                titulo="Receitas por Categoria"
+                tipo="receita"
+              />
+              <ReceitasPorCategoriaChart
+                data={despesasPorCategoria || []}
+                isLoading={isLoadingDespesas}
+                titulo="Despesas por Categoria"
+                tipo="despesa"
+              />
+            </div>
+
+            {/* Detalhamento em cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <DetailCard
+                titulo="Detalhamento de Receitas"
+                dados={receitasPorCategoria || []}
+                isLoading={isLoadingReceitas}
+                tipo="receita"
+              />
+              <DetailCard
+                titulo="Detalhamento de Despesas"
+                dados={despesasPorCategoria || []}
+                isLoading={isLoadingDespesas}
+                tipo="despesa"
+              />
+            </div>
+          </TabsContent>
+
+          {/* Tab: Evolução */}
+          <TabsContent value="evolucao" className="space-y-4 sm:space-y-6">
+            <EvolucaoMensalChart data={evolucaoMensal || []} isLoading={isLoadingEvolucao} />
+          </TabsContent>
+
+          {/* Tab: Produtividade */}
+          <TabsContent value="produtividade" className="space-y-4 sm:space-y-6">
+            <ProdutividadeChart data={produtividade || []} isLoading={isLoadingProdutividade} />
+          </TabsContent>
+
+          {/* Tab: Lançamentos */}
+          <TabsContent value="lancamentos" className="space-y-4 sm:space-y-6">
+            <TabelaLancamentos lancamentos={lancamentos || []} isLoading={isLoadingLancamentos} maxRows={100} />
+          </TabsContent>
+
+          {/* Tab: Gerar Relatório */}
           <TabsContent value="gerar">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {relatoriosDisponiveis.map((relatorio) => (
-                <Card
-                  key={relatorio.id}
-                  className="cursor-pointer hover:border-primary/30 hover:shadow-md transition-all"
-                  onClick={() => setSelectedReport(relatorio.id)}
-                >
-                  <CardHeader className="pb-3 sm:pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 text-primary">
-                        <relatorio.icon className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8 hidden sm:flex">
-                          <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    <CardTitle className="text-sm sm:text-base mt-2 sm:mt-3">{relatorio.titulo}</CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">{relatorio.descricao}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {relatorio.tipo}
-                      </span>
-                      <Button variant="outline" size="sm" className="h-7 sm:h-8 text-xs sm:text-sm">
-                        Gerar
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={relatorio.id}>
+                  <RelatorioCard
+                    titulo={relatorio.titulo}
+                    descricao={relatorio.descricao}
+                    tipo={relatorio.tipo}
+                    icon={relatorio.icon}
+                    onGerar={() => handleGerarRelatorio(relatorio.id)}
+                  />
+                </div>
               ))}
             </div>
-          </TabsContent>
-
-          <TabsContent value="receitas">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg">Distribuição por Tipo de Ato</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 sm:h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <Pie
-                          data={receitasPorAto}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={isMobile ? 40 : 60}
-                          outerRadius={isMobile ? 70 : 100}
-                          paddingAngle={2}
-                          dataKey="valor"
-                          nameKey="nome"
-                          label={isMobile ? false : ({ nome, porcentagem }) => `${nome}: ${porcentagem}%`}
-                        >
-                          {receitasPorAto.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => formatCurrency(value)}
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                        />
-                        <Legend />
-                      </RechartsPieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg">Detalhamento</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3 sm:space-y-4">
-                    {receitasPorAto.map((item, index) => (
-                      <div key={item.nome} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div
-                            className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: COLORS[index] }}
-                          />
-                          <span className="font-medium text-sm sm:text-base">{item.nome}</span>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-sm sm:text-base">{formatCurrency(item.valor)}</p>
-                          <p className="text-xs text-muted-foreground">{item.porcentagem}%</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="produtividade">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base sm:text-lg">Produtividade por Colaborador</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">
-                  Quantidade de atos e receita gerada no período
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 sm:h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={produtividadeMensal} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        className="text-xs fill-muted-foreground"
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="colaborador"
-                        className="text-xs fill-muted-foreground"
-                        tickLine={false}
-                        axisLine={false}
-                        width={isMobile ? 70 : 100}
-                        tick={{ fontSize: isMobile ? 10 : 12 }}
-                      />
-                      <Tooltip
-                        formatter={(value: number, name: string) => [
-                          name === "atos" ? value : formatCurrency(value),
-                          name === "atos" ? "Atos" : "Receita",
-                        ]}
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "8px",
-                        }}
-                      />
-                      <Legend />
-                      <Bar dataKey="atos" name="Atos" fill="hsl(var(--chart-1))" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>
     </MainLayout>
+  );
+}
+
+// Componente auxiliar para detalhamento
+function DetailCard({
+  titulo,
+  dados,
+  isLoading,
+  tipo,
+}: {
+  titulo: string;
+  dados: { categoria: string; valor: number; quantidade: number; porcentagem: number }[];
+  isLoading: boolean;
+  tipo: "receita" | "despesa";
+}) {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const corClasse = tipo === "receita" ? "text-primary" : "text-destructive";
+
+  if (isLoading) {
+    return (
+      <div className="border rounded-lg p-4">
+        <div className="h-40 flex items-center justify-center">
+          <span className="text-muted-foreground">Carregando...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dados || dados.length === 0) {
+    return (
+      <div className="border rounded-lg p-4">
+        <h3 className="font-medium mb-4">{titulo}</h3>
+        <div className="h-32 flex items-center justify-center text-muted-foreground">
+          Nenhum dado disponível
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border rounded-lg p-4">
+      <h3 className="font-medium mb-4">{titulo}</h3>
+      <div className="space-y-3">
+        {dados.map((item) => (
+          <div key={item.categoria} className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium truncate max-w-[150px]">{item.categoria}</span>
+              <span className="text-xs text-muted-foreground">({item.quantidade})</span>
+            </div>
+            <div className="text-right">
+              <p className={`font-bold text-sm ${corClasse}`}>{formatCurrency(item.valor)}</p>
+              <p className="text-xs text-muted-foreground">{item.porcentagem.toFixed(1)}%</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
