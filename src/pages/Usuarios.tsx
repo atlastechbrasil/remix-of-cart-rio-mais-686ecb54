@@ -44,6 +44,7 @@ import {
 } from "@/hooks/useUsuarios";
 import { NovoUsuarioDialog } from "@/components/usuarios/NovoUsuarioDialog";
 import { NovoPerfilDialog } from "@/components/usuarios/NovoPerfilDialog";
+import { EditarUsuarioDialog } from "@/components/usuarios/EditarUsuarioDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const roleStyles: Record<string, string> = {
@@ -64,6 +65,8 @@ export default function Usuarios() {
   const [searchTerm, setSearchTerm] = useState("");
   const [novoUsuarioOpen, setNovoUsuarioOpen] = useState(false);
   const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
+  const [editarUsuarioOpen, setEditarUsuarioOpen] = useState(false);
+  const [usuarioParaEditar, setUsuarioParaEditar] = useState<UsuarioAgregado | null>(null);
   const isMobile = useIsMobile();
 
   const { cartorioAtivo, isSuperAdmin, isLoading: tenantLoading } = useTenant();
@@ -251,7 +254,12 @@ export default function Usuarios() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    setUsuarioParaEditar(usuario);
+                                    setEditarUsuarioOpen(true);
+                                  }}
+                                >
                                   <Edit className="w-4 h-4 mr-2" />
                                   Editar
                                 </DropdownMenuItem>
@@ -521,6 +529,11 @@ export default function Usuarios() {
       {/* Dialogs */}
       <NovoUsuarioDialog open={novoUsuarioOpen} onOpenChange={setNovoUsuarioOpen} />
       <NovoPerfilDialog open={novoPerfilOpen} onOpenChange={setNovoPerfilOpen} />
+      <EditarUsuarioDialog
+        open={editarUsuarioOpen}
+        onOpenChange={setEditarUsuarioOpen}
+        usuario={usuarioParaEditar}
+      />
     </MainLayout>
   );
 }

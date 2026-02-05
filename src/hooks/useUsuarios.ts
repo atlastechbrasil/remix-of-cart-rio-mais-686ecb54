@@ -439,3 +439,81 @@ export function useCurrentUserRole() {
     enabled: !!user,
   });
 }
+
+// Hook para atualizar profile de um usuário
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      nome,
+      cargo,
+    }: {
+      userId: string;
+      nome?: string;
+      cargo?: string;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (nome !== undefined) updates.nome = nome;
+      if (cargo !== undefined) updates.cargo = cargo;
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .update(updates)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cartorio-usuarios"] });
+      queryClient.invalidateQueries({ queryKey: ["all-usuarios"] });
+      toast.success("Perfil atualizado!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao atualizar perfil: " + error.message);
+    },
+  });
+}
+
+// Hook para adicionar vínculo de usuário a um cartório específico
+export function useAddCartorioVinculo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userId,
+      cartorioId,
+      role,
+    }: {
+      userId: string;
+      cartorioId: string;
+      role: AppRole;
+    }) => {
+      const { data, error } = await supabase
+        .from("cartorio_usuarios")
+        .insert({
+          user_id: userId,
+          cartorio_id: cartorioId,
+          role,
+          ativo: true,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cartorio-usuarios"] });
+      queryClient.invalidateQueries({ queryKey: ["all-usuarios"] });
+      toast.success("Usuário vinculado ao cartório!");
+    },
+    onError: (error) => {
+      toast.error("Erro ao vincular usuário: " + error.message);
+    },
+  });
+}
