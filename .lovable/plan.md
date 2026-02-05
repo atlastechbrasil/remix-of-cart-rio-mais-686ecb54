@@ -152,11 +152,11 @@ className="sm:max-w-lg w-full h-full sm:h-auto"
 6. [x] Criar componente ResponsiveDialog (fullscreen mobile)
 7. [ ] Padronizar formulários
 
-### Fase 3: Páginas Principais
-8. [ ] Dashboard (Index)
-9. [ ] Conciliação
-10. [ ] Lançamentos
-11. [ ] Contas Bancárias
+### Fase 3: Páginas Principais ✅
+8. [x] Dashboard (Index)
+9. [x] Conciliação
+10. [x] Lançamentos
+11. [x] Contas Bancárias
 
 ### Fase 4: Páginas Secundárias
 12. [ ] Extratos

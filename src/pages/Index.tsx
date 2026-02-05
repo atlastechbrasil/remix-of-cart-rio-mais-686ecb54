@@ -38,9 +38,9 @@ const Index = () => {
         title="Dashboard"
         description="Visão geral da conciliação bancária"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Select defaultValue="atual">
-            <SelectTrigger className="w-36">
+            <SelectTrigger className="w-full sm:w-36">
               <Calendar className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Período" />
             </SelectTrigger>
@@ -50,15 +50,15 @@ const Index = () => {
               <SelectItem value="trimestre">Último Trimestre</SelectItem>
             </SelectContent>
           </Select>
-          <Button>
+          <Button className="w-full sm:w-auto">
             Exportar
           </Button>
         </div>
       </PageHeader>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             title="Saldo Bancário Total"
             value={formatCurrency(stats?.saldoTotal || 0)}
@@ -94,13 +94,13 @@ const Index = () => {
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <SaldoEvolutionChart />
           <ConciliacaoChart />
         </div>
 
         {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2">
             <RecentTransactions />
           </div>

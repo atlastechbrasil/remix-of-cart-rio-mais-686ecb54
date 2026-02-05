@@ -8,7 +8,6 @@ import {
   Calendar,
   RefreshCw,
   Link2,
-  Unlink,
   Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -29,7 +28,9 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useContasBancarias,
   useExtratoItensByConta,
@@ -60,15 +61,193 @@ const statusLabels = {
   divergente: "Divergente",
 };
 
+// Componente de item reutilizável para extrato e lançamento
+interface ItemCardProps {
+  id: string;
+  descricao: string;
+  data: string;
+  valor: number;
+  tipo: "credito" | "debito" | "receita" | "despesa";
+  status: string;
+  categoria?: string | null;
+  isSelected: boolean;
+  isSelectable: boolean;
+  onSelect: () => void;
+}
+
+function ItemCard({
+  descricao,
+  data,
+  valor,
+  tipo,
+  status,
+  categoria,
+  isSelected,
+  isSelectable,
+  onSelect,
+}: ItemCardProps) {
+  const isPositive = tipo === "credito" || tipo === "receita";
+
+  return (
+    <div
+      onClick={() => isSelectable && onSelect()}
+      className={cn(
+        "p-3 rounded-lg border transition-all",
+        isSelectable ? "cursor-pointer" : "cursor-default opacity-60",
+        isSelected
+          ? "border-primary bg-primary/5 ring-1 ring-primary"
+          : isSelectable
+          ? "hover:bg-muted/50"
+          : ""
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{descricao}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {format(parseISO(data), "dd/MM/yyyy")}
+            {categoria && ` • ${categoria}`}
+          </p>
+        </div>
+        <div className="text-right">
+          <p
+            className={cn(
+              "text-sm font-semibold",
+              isPositive ? "text-success" : "text-destructive"
+            )}
+          >
+            {isPositive ? "+" : "-"}
+            {formatCurrency(valor)}
+          </p>
+          <Badge
+            variant="outline"
+            className={cn("text-xs mt-1", statusStyles[status as keyof typeof statusStyles])}
+          >
+            {statusLabels[status as keyof typeof statusLabels]}
+          </Badge>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Lista de extratos
+interface ExtratoListProps {
+  items: ExtratoItem[];
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  isLoading: boolean;
+  contaInfo?: { banco: string; agencia: string; conta: string };
+}
+
+function ExtratoList({ items, selectedId, onSelect, isLoading, contaInfo }: ExtratoListProps) {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-3 border-b bg-muted/30">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-secondary" />
+          Extrato Bancário
+        </h3>
+        {contaInfo && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {contaInfo.banco} - Ag: {contaInfo.agencia} / CC: {contaInfo.conta}
+          </p>
+        )}
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : items.length > 0 ? (
+            items.map((item) => (
+              <div key={item.id}>
+                <ItemCard
+                  id={item.id}
+                  descricao={item.descricao}
+                  data={item.data_transacao}
+                  valor={Number(item.valor)}
+                  tipo={item.tipo as "credito" | "debito" | "receita" | "despesa"}
+                  status={item.status_conciliacao}
+                  isSelected={selectedId === item.id}
+                  isSelectable={item.status_conciliacao === "pendente"}
+                  onSelect={() => onSelect(selectedId === item.id ? null : item.id)}
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">Nenhum item de extrato encontrado.</p>
+              <p className="text-xs mt-1">Importe um extrato para esta conta.</p>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+// Lista de lançamentos
+interface LancamentoListProps {
+  items: Lancamento[];
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+}
+
+function LancamentoList({ items, selectedId, onSelect }: LancamentoListProps) {
+  return (
+    <div className="h-full flex flex-col">
+      <div className="p-3 border-b bg-muted/30">
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-primary" />
+          Lançamentos do Sistema
+        </h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          {items.length} lançamentos pendentes
+        </p>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {items.length > 0 ? (
+            items.map((item) => (
+              <div key={item.id}>
+                <ItemCard
+                  id={item.id}
+                  descricao={item.descricao}
+                  data={item.data}
+                  valor={Number(item.valor)}
+                  tipo={item.tipo as "credito" | "debito" | "receita" | "despesa"}
+                  status={item.status_conciliacao}
+                  categoria={item.categoria}
+                  isSelected={selectedId === item.id}
+                  isSelectable={true}
+                  onSelect={() => onSelect(selectedId === item.id ? null : item.id)}
+                />
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">Nenhum lançamento pendente.</p>
+              <p className="text-xs mt-1">Todos os lançamentos foram conciliados.</p>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
 export default function Conciliacao() {
+  const isMobile = useIsMobile();
   const { data: contas, isLoading: loadingContas } = useContasBancarias();
   const { data: lancamentos, isLoading: loadingLancamentos } = useLancamentos();
   const vincular = useVincularConciliacao();
-  const desvincular = useDesvincularConciliacao();
 
   const [selectedContaId, setSelectedContaId] = useState<string | undefined>();
   const [selectedExtrato, setSelectedExtrato] = useState<string | null>(null);
   const [selectedLancamento, setSelectedLancamento] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<string>("extrato");
 
   const { data: extratoItens, isLoading: loadingExtrato } = useExtratoItensByConta(selectedContaId);
 
@@ -138,9 +317,9 @@ export default function Conciliacao() {
         title="Conciliação Bancária"
         description="Compare extratos bancários com lançamentos do sistema"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Select value={selectedContaId} onValueChange={setSelectedContaId}>
-            <SelectTrigger className="w-56">
+            <SelectTrigger className="w-full sm:w-56">
               <SelectValue placeholder="Selecione uma conta" />
             </SelectTrigger>
             <SelectContent>
@@ -151,71 +330,73 @@ export default function Conciliacao() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline">
-            <Calendar className="w-4 h-4 mr-2" />
-            Período
-          </Button>
-          <Button>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="flex-1 sm:flex-none">
+              <Calendar className="w-4 h-4 mr-2" />
+              <span className="sm:inline">Período</span>
+            </Button>
+            <Button className="flex-1 sm:flex-none">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              <span className="sm:inline">Atualizar</span>
+            </Button>
+          </div>
         </div>
       </PageHeader>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* KPIs de Conciliação */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-success/10">
-                  <CheckCircle2 className="w-5 h-5 text-success" />
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-success/10">
+                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Conciliados</p>
-                  <p className="text-2xl font-bold text-success">{stats.conciliados}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Conciliados</p>
+                  <p className="text-lg sm:text-2xl font-bold text-success">{stats.conciliados}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-warning/10">
-                  <Clock className="w-5 h-5 text-warning" />
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-warning/10">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Pendentes</p>
-                  <p className="text-2xl font-bold text-warning">{stats.pendentes}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Pendentes</p>
+                  <p className="text-lg sm:text-2xl font-bold text-warning">{stats.pendentes}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-destructive/10">
-                  <AlertTriangle className="w-5 h-5 text-destructive" />
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-destructive/10">
+                  <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Divergentes</p>
-                  <p className="text-2xl font-bold text-destructive">{stats.divergentes}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Divergentes</p>
+                  <p className="text-lg sm:text-2xl font-bold text-destructive">{stats.divergentes}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <ArrowRightLeft className="w-5 h-5 text-primary" />
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+                  <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Taxa de Conciliação</p>
-                  <p className="text-2xl font-bold text-primary">{stats.taxaConciliacao}%</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Taxa</p>
+                  <p className="text-lg sm:text-2xl font-bold text-primary">{stats.taxaConciliacao}%</p>
                 </div>
               </div>
             </CardContent>
@@ -236,10 +417,10 @@ export default function Conciliacao() {
           /* Painel de Conciliação */
           <Card className="flex-1">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="text-lg">Comparativo de Lançamentos</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
                     <Filter className="w-4 h-4 mr-2" />
                     Filtros
                   </Button>
@@ -247,170 +428,105 @@ export default function Conciliacao() {
                     size="sm"
                     disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
                     onClick={handleVincular}
+                    className="flex-1 sm:flex-none"
                   >
                     {vincular.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
                       <Link2 className="w-4 h-4 mr-2" />
                     )}
-                    Vincular Selecionados
+                    <span className="hidden sm:inline">Vincular Selecionados</span>
+                    <span className="sm:hidden">Vincular</span>
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
-                {/* Extrato Bancário */}
-                <ResizablePanel defaultSize={50} minSize={30}>
-                  <div className="h-full flex flex-col">
-                    <div className="p-3 border-b bg-muted/30">
-                      <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-secondary" />
-                        Extrato Bancário
-                      </h3>
-                      {contaAtiva && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {contaAtiva.banco} - Ag: {contaAtiva.agencia} / CC: {contaAtiva.conta}
-                        </p>
-                      )}
-                    </div>
-                    <ScrollArea className="flex-1">
-                      <div className="p-2 space-y-1">
-                        {loadingExtrato ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                          </div>
-                        ) : extratoItens && extratoItens.length > 0 ? (
-                          extratoItens.map((item) => (
-                            <div
-                              key={item.id}
-                              onClick={() =>
-                                item.status_conciliacao === "pendente" &&
-                                setSelectedExtrato(selectedExtrato === item.id ? null : item.id)
-                              }
-                              className={cn(
-                                "p-3 rounded-lg border transition-all",
-                                item.status_conciliacao === "pendente"
-                                  ? "cursor-pointer"
-                                  : "cursor-default opacity-60",
-                                selectedExtrato === item.id
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                  : item.status_conciliacao === "pendente"
-                                  ? "hover:bg-muted/50"
-                                  : ""
-                              )}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">
-                                    {item.descricao}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {format(parseISO(item.data_transacao), "dd/MM/yyyy")}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p
-                                    className={cn(
-                                      "text-sm font-semibold",
-                                      item.tipo === "credito" ? "text-success" : "text-destructive"
-                                    )}
-                                  >
-                                    {item.tipo === "credito" ? "+" : "-"}
-                                    {formatCurrency(Number(item.valor))}
-                                  </p>
-                                  <Badge
-                                    variant="outline"
-                                    className={cn("text-xs mt-1", statusStyles[item.status_conciliacao])}
-                                  >
-                                    {statusLabels[item.status_conciliacao]}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <p className="text-sm">Nenhum item de extrato encontrado.</p>
-                            <p className="text-xs mt-1">Importe um extrato para esta conta.</p>
-                          </div>
+              {/* Mobile: Tabs */}
+              {isMobile ? (
+                <div className="space-y-4">
+                  <Tabs value={mobileTab} onValueChange={setMobileTab}>
+                    <TabsList className="w-full grid grid-cols-2">
+                      <TabsTrigger value="extrato" className="relative">
+                        Extrato
+                        {selectedExtrato && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
                         )}
+                      </TabsTrigger>
+                      <TabsTrigger value="lancamentos" className="relative">
+                        Lançamentos
+                        {selectedLancamento && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                        )}
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="extrato" className="mt-4">
+                      <div className="border rounded-lg h-[400px]">
+                        <ExtratoList
+                          items={extratoItens || []}
+                          selectedId={selectedExtrato}
+                          onSelect={setSelectedExtrato}
+                          isLoading={loadingExtrato}
+                          contaInfo={contaAtiva ? {
+                            banco: contaAtiva.banco,
+                            agencia: contaAtiva.agencia,
+                            conta: contaAtiva.conta,
+                          } : undefined}
+                        />
                       </div>
-                    </ScrollArea>
-                  </div>
-                </ResizablePanel>
+                    </TabsContent>
+                    <TabsContent value="lancamentos" className="mt-4">
+                      <div className="border rounded-lg h-[400px]">
+                        <LancamentoList
+                          items={lancamentosPendentes}
+                          selectedId={selectedLancamento}
+                          onSelect={setSelectedLancamento}
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
 
-                <ResizableHandle withHandle />
-
-                {/* Lançamentos do Sistema */}
-                <ResizablePanel defaultSize={50} minSize={30}>
-                  <div className="h-full flex flex-col">
-                    <div className="p-3 border-b bg-muted/30">
-                      <h3 className="font-semibold text-sm flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                        Lançamentos do Sistema
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {lancamentosPendentes.length} lançamentos pendentes
+                  {/* Selection summary */}
+                  {(selectedExtrato || selectedLancamento) && (
+                    <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                      <p className="text-muted-foreground">
+                        {selectedExtrato && selectedLancamento
+                          ? "✓ Ambos selecionados - clique em Vincular"
+                          : selectedExtrato
+                          ? "Extrato selecionado - selecione um lançamento"
+                          : "Lançamento selecionado - selecione um extrato"}
                       </p>
                     </div>
-                    <ScrollArea className="flex-1">
-                      <div className="p-2 space-y-1">
-                        {lancamentosPendentes.length > 0 ? (
-                          lancamentosPendentes.map((item) => (
-                            <div
-                              key={item.id}
-                              onClick={() =>
-                                setSelectedLancamento(selectedLancamento === item.id ? null : item.id)
-                              }
-                              className={cn(
-                                "p-3 rounded-lg border cursor-pointer transition-all",
-                                selectedLancamento === item.id
-                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                  : "hover:bg-muted/50"
-                              )}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate">
-                                    {item.descricao}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    {format(parseISO(item.data), "dd/MM/yyyy")}
-                                    {item.categoria && ` • ${item.categoria}`}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p
-                                    className={cn(
-                                      "text-sm font-semibold",
-                                      item.tipo === "receita" ? "text-success" : "text-destructive"
-                                    )}
-                                  >
-                                    {item.tipo === "receita" ? "+" : "-"}
-                                    {formatCurrency(Number(item.valor))}
-                                  </p>
-                                  <Badge
-                                    variant="outline"
-                                    className={cn("text-xs mt-1", statusStyles[item.status_conciliacao])}
-                                  >
-                                    {statusLabels[item.status_conciliacao]}
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <p className="text-sm">Nenhum lançamento pendente.</p>
-                            <p className="text-xs mt-1">Todos os lançamentos foram conciliados.</p>
-                          </div>
-                        )}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </ResizablePanel>
-              </ResizablePanelGroup>
+                  )}
+                </div>
+              ) : (
+                /* Desktop: Resizable panels */
+                <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
+                  <ResizablePanel defaultSize={50} minSize={30}>
+                    <ExtratoList
+                      items={extratoItens || []}
+                      selectedId={selectedExtrato}
+                      onSelect={setSelectedExtrato}
+                      isLoading={loadingExtrato}
+                      contaInfo={contaAtiva ? {
+                        banco: contaAtiva.banco,
+                        agencia: contaAtiva.agencia,
+                        conta: contaAtiva.conta,
+                      } : undefined}
+                    />
+                  </ResizablePanel>
+
+                  <ResizableHandle withHandle />
+
+                  <ResizablePanel defaultSize={50} minSize={30}>
+                    <LancamentoList
+                      items={lancamentosPendentes}
+                      selectedId={selectedLancamento}
+                      onSelect={setSelectedLancamento}
+                    />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              )}
             </CardContent>
           </Card>
         )}
