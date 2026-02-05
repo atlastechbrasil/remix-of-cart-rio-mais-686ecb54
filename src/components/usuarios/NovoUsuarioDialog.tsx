@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateCartorioUsuario } from "@/hooks/useUsuarios";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -32,137 +32,243 @@ interface NovoUsuarioDialogProps {
 }
 
 export function NovoUsuarioDialog({ open, onOpenChange }: NovoUsuarioDialogProps) {
+  const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [confirmarSenha, setConfirmarSenha] = useState("");
+  const [cargo, setCargo] = useState("");
   const [role, setRole] = useState<AppRole>("operacional");
-  const [isSearching, setIsSearching] = useState(false);
-  const [foundUserId, setFoundUserId] = useState<string | null>(null);
-  const [foundUserName, setFoundUserName] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   const createUsuario = useCreateCartorioUsuario();
 
-  const handleSearchUser = async () => {
-    if (!email.trim()) {
-      toast.error("Digite um e-mail para buscar");
-      return;
-    }
-
-    setIsSearching(true);
-    setFoundUserId(null);
-    setFoundUserName(null);
-
-    try {
-      // Buscar usuário pelo profile (que contém o user_id)
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("user_id, nome")
-        .limit(10);
-
-      if (error) throw error;
-
-      // Como não temos acesso direto ao email via profiles, 
-      // precisamos de uma abordagem diferente
-      // Por enquanto, informamos ao usuário que precisa do ID ou ajustar a busca
-      
-      toast.info("Para adicionar um usuário, ele precisa já ter uma conta no sistema. Use o ID do usuário se souber.");
-      
-    } catch (error) {
-      console.error("Erro ao buscar usuário:", error);
-      toast.error("Erro ao buscar usuário");
-    } finally {
-      setIsSearching(false);
-    }
+  const resetForm = () => {
+    setNome("");
+    setEmail("");
+    setSenha("");
+    setConfirmarSenha("");
+    setCargo("");
+    setRole("operacional");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Por simplicidade, vamos permitir adicionar pelo ID do usuário
-    // Em uma implementação mais completa, seria necessário uma edge function
-    if (!email.trim()) {
-      toast.error("Digite o ID do usuário");
+    // Validações
+    if (!nome.trim()) {
+      toast.error("O nome é obrigatório");
       return;
     }
 
+    if (!email.trim()) {
+      toast.error("O e-mail é obrigatório");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Digite um e-mail válido");
+      return;
+    }
+
+    if (senha.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+
+    if (senha !== confirmarSenha) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+
+    setIsCreating(true);
+
     try {
+      // Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: senha,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            nome: nome.trim(),
+          },
+        },
+      });
+
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast.error("Este e-mail já está cadastrado no sistema");
+        } else {
+          toast.error("Erro ao criar usuário: " + authError.message);
+        }
+        return;
+      }
+
+      if (!authData.user) {
+        toast.error("Erro ao criar usuário: nenhum usuário retornado");
+        return;
+      }
+
+      // Atualizar o profile com o cargo se fornecido
+      if (cargo.trim()) {
+        await supabase
+          .from("profiles")
+          .update({ cargo: cargo.trim() })
+          .eq("user_id", authData.user.id);
+      }
+
+      // Vincular ao cartório com a role selecionada
       await createUsuario.mutateAsync({
-        userId: email.trim(), // Usando o campo como ID por enquanto
+        userId: authData.user.id,
         role,
       });
-      
-      setEmail("");
-      setRole("operacional");
-      setFoundUserId(null);
-      setFoundUserName(null);
+
+      toast.success("Usuário criado e vinculado ao cartório com sucesso!");
+      resetForm();
       onOpenChange(false);
-    } catch (error) {
-      // Erro já tratado no hook
+    } catch (error: any) {
+      console.error("Erro ao criar usuário:", error);
+      toast.error("Erro ao criar usuário: " + error.message);
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleClose = () => {
-    setEmail("");
-    setRole("operacional");
-    setFoundUserId(null);
-    setFoundUserName(null);
+    resetForm();
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Adicionar Usuário ao Cartório</DialogTitle>
+          <DialogTitle>Criar Novo Usuário</DialogTitle>
           <DialogDescription>
-            Informe o ID do usuário (UUID) que deseja vincular a este cartório.
+            Preencha os dados para criar um novo usuário e vinculá-lo a este cartório.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">ID do Usuário (UUID)</Label>
-            <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="nome">Nome Completo *</Label>
               <Input
-                id="email"
-                placeholder="Ex: 12345678-1234-1234-1234-123456789012"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1"
+                id="nome"
+                placeholder="Digite o nome completo"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                autoComplete="name"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              O usuário precisa ter uma conta no sistema. Peça o UUID ao administrador.
-            </p>
-          </div>
 
-          {foundUserName && (
-            <div className="p-3 bg-success/10 rounded-md">
-              <p className="text-sm text-success">
-                Usuário encontrado: <strong>{foundUserName}</strong>
-              </p>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="email">E-mail *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="exemplo@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
             </div>
-          )}
 
-          <div className="space-y-2">
-            <Label htmlFor="role">Perfil de Acesso</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o perfil" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="financeiro">Financeiro</SelectItem>
-                <SelectItem value="operacional">Operacional</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label htmlFor="senha">Senha *</Label>
+              <div className="relative">
+                <Input
+                  id="senha"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Mínimo 6 caracteres"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  autoComplete="new-password"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmarSenha">Confirmar Senha *</Label>
+              <div className="relative">
+                <Input
+                  id="confirmarSenha"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Repita a senha"
+                  value={confirmarSenha}
+                  onChange={(e) => setConfirmarSenha(e.target.value)}
+                  autoComplete="new-password"
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cargo">Cargo</Label>
+              <Input
+                id="cargo"
+                placeholder="Ex: Gerente Financeiro"
+                value={cargo}
+                onChange={(e) => setCargo(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="role">Perfil de Acesso *</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o perfil" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Administrador</SelectItem>
+                  <SelectItem value="financeiro">Financeiro</SelectItem>
+                  <SelectItem value="operacional">Operacional</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={createUsuario.isPending}>
-              {createUsuario.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Adicionar
+            <Button type="submit" disabled={isCreating || createUsuario.isPending}>
+              {(isCreating || createUsuario.isPending) && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Criar Usuário
             </Button>
           </DialogFooter>
         </form>
