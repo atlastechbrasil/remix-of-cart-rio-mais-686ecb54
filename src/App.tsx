@@ -17,6 +17,7 @@ import Configuracoes from "./pages/Configuracoes";
 import Conciliacao from "./pages/Conciliacao";
 import ContasBancarias from "./pages/ContasBancarias";
 import Extratos from "./pages/Extratos";
+import Cartorios from "./pages/Cartorios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/repasses" element={<ProtectedRoute><Repasses /></ProtectedRoute>} />
               <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
               <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
+              <Route path="/cartorios" element={<ProtectedRoute><Cartorios /></ProtectedRoute>} />
               <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
