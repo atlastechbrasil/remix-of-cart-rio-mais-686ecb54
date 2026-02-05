@@ -1,218 +1,171 @@
-# Plano: Adaptação Mobile-First do FinCart
+# Plano: Implementação Completa da Tela de Relatórios
 
-## Objetivo
-
-Ajustar todas as páginas e componentes para funcionamento adequado em dispositivos móveis, seguindo a abordagem mobile-first, sem afetar a experiência desktop existente.
-
----
-
-## Princípios
-
-1. **Mobile-First**: Estilos base para mobile, media queries para telas maiores
-2. **Não quebrar funcionalidades**: Todas as features devem continuar funcionando
-3. **Usabilidade**: Touch-friendly, áreas de toque adequadas (mínimo 44x44px)
-4. **Performance**: Evitar componentes pesados em mobile
+## Visão Geral
+Implementação completa da tela de Relatórios com dados reais do Supabase, exportação para PDF/Excel, impressão e gráficos interativos com filtros avançados.
 
 ---
 
-## Análise dos Componentes
+## Fase 1: Infraestrutura de Dados e Hooks
 
-### 1. Layout Principal
+### 1.1 Hook de Relatórios (`src/hooks/useRelatorios.ts`)
+- [ ] Criar hook para buscar dados agregados de lançamentos
+- [ ] Implementar queries para:
+  - Resumo financeiro (receitas, despesas, saldo)
+  - Receitas por categoria
+  - Evolução mensal
+  - Dados de conciliação
+  - Produtividade por responsável
+- [ ] Filtros por: período, tipo de lançamento, status de conciliação, categoria
+- [ ] Suporte a `cartorio_id` do TenantContext
 
-#### 1.1 AppSidebar
-**Status**: Precisa adaptação  
-**Problemas**:
-- Sidebar fixa ocupa espaço em mobile
-- Menu não é acessível em telas pequenas
-
-**Solução**:
-- Converter para drawer/sheet em mobile (< 768px)
-- Adicionar botão hamburger no header
-- Manter sidebar fixa apenas em desktop (>= 1024px)
-
-#### 1.2 MainLayout
-**Status**: Precisa adaptação  
-**Problemas**:
-- Layout flexbox pode não se adaptar bem
-
-**Solução**:
-- Sidebar como overlay em mobile
-- Conteúdo principal ocupa 100% da largura
-
-#### 1.3 PageHeader
-**Status**: Precisa ajustes  
-**Problemas**:
-- Busca e seletor de cartório podem não caber
-- Muitos elementos na mesma linha
-
-**Solução**:
-- Esconder busca em mobile (já parcialmente feito)
-- Seletor de cartório em menu dropdown
-- Stack vertical do título + ações em mobile
+### 1.2 Tipos e Interfaces (`src/types/relatorios.ts`)
+- [ ] Definir tipos para filtros de relatório
+- [ ] Definir tipos para dados agregados
+- [ ] Definir tipos para opções de exportação
 
 ---
 
-### 2. Páginas
+## Fase 2: Componentes de Filtros
 
-#### 2.1 Dashboard (Index)
-**Ajustes necessários**:
-- Cards de estatísticas: 1 coluna em mobile, 2 em tablet, 4 em desktop
-- Gráficos: largura 100%, altura adaptável
-- Widgets: stack vertical em mobile
+### 2.1 Filtros Avançados (`src/components/relatorios/FiltrosRelatorio.tsx`)
+- [ ] Date range picker para período
+- [ ] Multi-select para tipo de lançamento (receita/despesa)
+- [ ] Select para status de conciliação
+- [ ] Select para categoria
+- [ ] Botão de limpar filtros
+- [ ] Responsividade mobile (drawer/sheet)
 
-#### 2.2 Conciliação
-**Ajustes necessários**:
-- Painel dividido: tabs em mobile em vez de split view
-- Tabelas: scroll horizontal ou cards em mobile
-- Botões de ação: sticky footer em mobile
-
-#### 2.3 Contas Bancárias
-**Ajustes necessários**:
-- Grid de cards: 1 coluna em mobile
-- Dialogs: fullscreen em mobile
-- Tabelas: cards responsivos
-
-#### 2.4 Extratos
-**Ajustes necessários**:
-- Tabela de itens: scroll horizontal ou cards
-- Filtros: collapsible em mobile
-- Upload: área de drop adequada
-
-#### 2.5 Lançamentos
-**Ajustes necessários**:
-- Tabela: cards em mobile
-- Filtros: drawer lateral ou collapsible
-- Dialog de novo lançamento: fullscreen
-
-#### 2.6 Usuários
-**Ajustes necessários**:
-- Tabs: scroll horizontal se necessário
-- Tabela: cards em mobile
-- Dialogs: fullscreen
-
-#### 2.7 Cartórios
-**Ajustes necessários**:
-- Stats cards: 1 coluna em mobile
-- Tabela: cards responsivos
-- Ações: menu contextual
-
-#### 2.8 Configurações
-**Ajustes necessários**:
-- Layout de seções: stack vertical
-- Forms: inputs full width
-
-#### 2.9 Relatórios
-**Ajustes necessários**:
-- Filtros: collapsible
-- Gráficos: scroll horizontal se necessário
+### 2.2 Seletor de Período Rápido
+- [ ] Opções: Hoje, Esta semana, Este mês, Último mês, Este ano
+- [ ] Seleção de período customizado
 
 ---
 
-### 3. Componentes UI
+## Fase 3: Gráficos e Visualizações
 
-#### 3.1 Dialogs
-**Padrão para todos**:
-```tsx
-// Mobile: fullscreen
-// Desktop: centered modal
-className="sm:max-w-lg w-full h-full sm:h-auto"
-```
+### 3.1 Gráfico de Receitas por Categoria (`src/components/relatorios/ReceitasPorCategoriaChart.tsx`)
+- [ ] Pie chart com dados reais de lançamentos
+- [ ] Legenda interativa
+- [ ] Tooltip com valores formatados
+- [ ] Adaptação mobile
 
-#### 3.2 Tabelas
-**Padrão para todos**:
-- Desktop: tabela tradicional
-- Mobile: cards ou scroll horizontal com min-width
+### 3.2 Gráfico de Evolução Mensal (`src/components/relatorios/EvolucaoMensalChart.tsx`)
+- [ ] Line/Area chart com receitas vs despesas
+- [ ] Eixo X com meses
+- [ ] Comparativo visual
 
-#### 3.3 Formulários
-**Padrão para todos**:
-- Inputs: full width em mobile
-- Botões: full width ou stack vertical
-- Labels: acima dos inputs (não ao lado)
+### 3.3 Gráfico de Produtividade (`src/components/relatorios/ProdutividadeChart.tsx`)
+- [ ] Bar chart horizontal por responsável
+- [ ] Quantidade de lançamentos e valor total
+- [ ] Filtro por tipo
 
-#### 3.4 Grids
-**Breakpoints padrão**:
-```
-- Mobile (<640px): 1 coluna
-- Tablet (640-1024px): 2 colunas
-- Desktop (>1024px): 3-4 colunas
-```
+### 3.4 Indicadores Resumo (`src/components/relatorios/IndicadoresResumo.tsx`)
+- [ ] Cards com: Total Receitas, Total Despesas, Saldo, % Conciliado
+- [ ] Comparativo com período anterior
 
 ---
 
-## Ordem de Implementação
+## Fase 4: Relatórios Específicos
 
-### Fase 1: Layout Base ✅
-1. [x] Criar componente MobileNav (hamburger + sheet) - MobileHeader.tsx
-2. [x] Adaptar AppSidebar para responsivo - Sheet mobile + sidebar desktop
-3. [x] Adaptar MainLayout - Condicional desktop/mobile
-4. [x] Adaptar PageHeader - Responsivo com breakpoints
+### 4.1 Relatório Financeiro Mensal
+- [ ] Resumo executivo
+- [ ] Tabela de lançamentos
+- [ ] Gráficos de distribuição
 
-### Fase 2: Componentes Compartilhados ✅
-5. [x] Criar componente ResponsiveTable (tabela/cards)
-6. [x] Criar componente ResponsiveDialog (fullscreen mobile)
-7. [ ] Padronizar formulários
+### 4.2 Relatório de Conciliação
+- [ ] Status geral de conciliação
+- [ ] Itens pendentes vs conciliados
+- [ ] Divergências encontradas
 
-### Fase 3: Páginas Principais ✅
-8. [x] Dashboard (Index)
-9. [x] Conciliação
-10. [x] Lançamentos
-11. [x] Contas Bancárias
-
-### Fase 4: Páginas Secundárias ✅
-12. [x] Extratos - ResponsiveTable, filtros collapsible, grids 2x2
-13. [x] Usuários - Tabs scrollable, grids responsivos, cards compactos
-14. [x] Cartórios - ResponsiveTable, stats cards responsivos
-15. [x] Configurações - Tabs scrollable, formulários full-width mobile
-16. [x] Relatórios - Tabs scrollable, grids responsivos, gráficos adaptados
-
-### Fase 5: Testes e Refinamentos
-17. [ ] Testar em diferentes dispositivos
-18. [ ] Ajustar touch targets
-19. [ ] Verificar performance
-20. [ ] Corrigir bugs visuais
+### 4.3 Relatório Comparativo
+- [ ] Comparativo mês atual vs anterior
+- [ ] Variação percentual
+- [ ] Gráfico de barras comparativo
 
 ---
 
-## Breakpoints Tailwind
+## Fase 5: Funcionalidade de Exportação
+
+### 5.1 Utilitário de Exportação (`src/lib/export-utils.ts`)
+- [ ] Função `exportToPDF` usando jspdf + jspdf-autotable
+- [ ] Função `exportToExcel` usando xlsx
+- [ ] Função `printReport` para impressão nativa
+
+### 5.2 Componente de Exportação (`src/components/relatorios/ExportButtons.tsx`)
+- [ ] Botões de exportação (PDF, Excel, Imprimir)
+- [ ] Dropdown menu com opções
+- [ ] Loading states durante exportação
+
+---
+
+## Fase 6: Página Principal de Relatórios
+
+### 6.1 Refatorar `src/pages/Relatorios.tsx`
+- [ ] Integrar todos os componentes
+- [ ] Estado global de filtros
+- [ ] Navegação entre tipos de relatório
+- [ ] Loading states e error handling
+
+### 6.2 Tabs/Navegação
+- [ ] Tab: Visão Geral (dashboard de métricas)
+- [ ] Tab: Financeiro (receitas, despesas, fluxo)
+- [ ] Tab: Conciliação (status, divergências)
+- [ ] Tab: Gerar Relatórios (cards de relatórios disponíveis)
+
+---
+
+## Fase 7: Responsividade Mobile
+
+### 7.1 Adaptações Mobile
+- [ ] Filtros em Sheet/Drawer
+- [ ] Gráficos redimensionados
+- [ ] Tabelas responsivas
+- [ ] Touch-friendly controls
+
+### 7.2 Exportação Mobile
+- [ ] Download direto
+
+---
+
+## Dependências Necessárias
+- `jspdf` - Geração de PDF
+- `jspdf-autotable` - Tabelas em PDF
+- `xlsx` - Exportação Excel
+
+---
+
+## Estrutura de Arquivos Final
 
 ```
-sm: 640px   (tablet pequeno)
-md: 768px   (tablet)
-lg: 1024px  (desktop pequeno)
-xl: 1280px  (desktop)
-2xl: 1536px (desktop grande)
+src/
+├── components/
+│   └── relatorios/
+│       ├── FiltrosRelatorio.tsx
+│       ├── ReceitasPorCategoriaChart.tsx
+│       ├── EvolucaoMensalChart.tsx
+│       ├── ProdutividadeChart.tsx
+│       ├── IndicadoresResumo.tsx
+│       ├── RelatorioCard.tsx
+│       ├── ExportButtons.tsx
+│       └── RelatorioPreviewDialog.tsx
+├── hooks/
+│   └── useRelatorios.ts
+├── lib/
+│   └── export-utils.ts
+├── types/
+│   └── relatorios.ts
+└── pages/
+    └── Relatorios.tsx
 ```
 
 ---
 
-## Checklist por Componente
-
-Para cada componente/página:
-- [ ] Funciona em 320px de largura?
-- [ ] Touch targets >= 44px?
-- [ ] Texto legível sem zoom?
-- [ ] Formulários usáveis?
-- [ ] Navegação acessível?
-- [ ] Não quebra funcionalidade existente?
-
----
-
-## Notas Técnicas
-
-1. **Não usar `@apply` com variáveis** (restrição do Tailwind v4)
-2. **Dialogs**: Usar Sheet do shadcn para mobile quando apropriado
-3. **Tabelas longas**: Considerar virtualização para performance
-4. **Imagens**: Lazy loading obrigatório
-5. **Gestos**: Swipe para voltar/fechar onde apropriado
-
----
-
-## Estimativa
-
-- **Fase 1**: 2-3 iterações
-- **Fase 2**: 1-2 iterações
-- **Fase 3**: 3-4 iterações
-- **Fase 4**: 2-3 iterações
-- **Fase 5**: 1-2 iterações
-
-**Total estimado**: 9-14 iterações
+## Próximos Passos
+1. Instalar dependências (jspdf, jspdf-autotable, xlsx)
+2. Criar tipos e interfaces
+3. Implementar hook de dados
+4. Criar componentes de filtros
+5. Criar componentes de gráficos
+6. Implementar exportação
+7. Refatorar página principal
+8. Testar responsividade
