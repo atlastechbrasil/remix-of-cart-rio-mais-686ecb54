@@ -14,6 +14,7 @@ import { Plus, MoreHorizontal, Building2, Pencil, Trash2, Users } from "lucide-r
 import { useTenant } from "@/contexts/TenantContext";
 import { useCartorios, useUpdateCartorio, useDeleteCartorio } from "@/hooks/useCartorios";
 import { NovoCartorioDialog } from "@/components/cartorios/NovoCartorioDialog";
+import { GerenciarUsuariosDialog } from "@/components/cartorios/GerenciarUsuariosDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Navigate } from "react-router-dom";
 import {
@@ -48,6 +49,8 @@ export default function Cartorios() {
   const [novoDialogOpen, setNovoDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedCartorioId, setSelectedCartorioId] = useState<string | null>(null);
+  const [usuariosDialogOpen, setUsuariosDialogOpen] = useState(false);
+  const [selectedCartorioForUsers, setSelectedCartorioForUsers] = useState<Cartorio | null>(null);
 
   // Redirect non-super admins
   if (!tenantLoading && !isSuperAdmin) {
@@ -69,6 +72,11 @@ export default function Cartorios() {
   const confirmDelete = (id: string) => {
     setSelectedCartorioId(id);
     setDeleteDialogOpen(true);
+  };
+
+  const openUsuariosDialog = (cartorio: Cartorio) => {
+    setSelectedCartorioForUsers(cartorio);
+    setUsuariosDialogOpen(true);
   };
 
   const columns: Column<Cartorio>[] = [
@@ -123,7 +131,7 @@ export default function Cartorios() {
           <Pencil className="w-4 h-4 mr-2" />
           Editar
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openUsuariosDialog(cartorio)}>
           <Users className="w-4 h-4 mr-2" />
           Gerenciar Usuários
         </DropdownMenuItem>
@@ -230,6 +238,13 @@ export default function Cartorios() {
       </div>
 
       <NovoCartorioDialog open={novoDialogOpen} onOpenChange={setNovoDialogOpen} />
+
+      <GerenciarUsuariosDialog
+        open={usuariosDialogOpen}
+        onOpenChange={setUsuariosDialogOpen}
+        cartorioId={selectedCartorioForUsers?.id || null}
+        cartorioNome={selectedCartorioForUsers?.nome}
+      />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
