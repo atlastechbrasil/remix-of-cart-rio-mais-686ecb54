@@ -105,9 +105,9 @@ export default function ContasBancarias() {
         <NovaContaDialog />
       </PageHeader>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Cards de Resumo */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <Card className="border-l-4 border-l-primary">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -160,7 +160,7 @@ export default function ContasBancarias() {
 
         {/* Cards de Contas */}
         {contas && contas.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {contas.map((conta) => (
               <Card
                 key={conta.id}
@@ -248,9 +248,9 @@ export default function ContasBancarias() {
           </Card>
         )}
 
-        {/* Tabela de Contas */}
+        {/* Tabela de Contas - hidden on mobile, visible on desktop */}
         {contas && contas.length > 0 && (
-          <Card>
+          <Card className="hidden lg:block">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Todas as Contas</CardTitle>

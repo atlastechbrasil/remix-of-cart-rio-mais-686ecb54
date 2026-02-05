@@ -23,14 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { NovoLancamentoDialog } from "@/components/financeiro/NovoLancamentoDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { ResponsiveTable, Column } from "@/components/ui/responsive-table";
 import { cn } from "@/lib/utils";
 import { useLancamentos, useDeleteLancamento, Lancamento } from "@/hooks/useConciliacao";
 import { format, parseISO } from "date-fns";
@@ -113,6 +106,88 @@ export default function Lancamentos() {
     }
   };
 
+  const columns: Column<Lancamento>[] = [
+    {
+      key: "data",
+      header: "Data",
+      render: (item) => format(parseISO(item.data), "dd/MM/yyyy"),
+    },
+    {
+      key: "descricao",
+      header: "Descrição",
+      render: (item) => (
+        <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              "p-1.5 rounded-full",
+              item.tipo === "receita"
+                ? "bg-success/10 text-success"
+                : "bg-destructive/10 text-destructive"
+            )}
+          >
+            {item.tipo === "receita" ? (
+              <ArrowDownLeft className="w-3 h-3" />
+            ) : (
+              <ArrowUpRight className="w-3 h-3" />
+            )}
+          </div>
+          <span className="truncate max-w-xs">{item.descricao}</span>
+        </div>
+      ),
+    },
+    {
+      key: "categoria",
+      header: "Categoria",
+      hideOnMobile: true,
+      render: (item) => <Badge variant="outline">{item.categoria || "-"}</Badge>,
+    },
+    {
+      key: "responsavel",
+      header: "Responsável",
+      hideOnMobile: true,
+      render: (item) => (
+        <span className="text-muted-foreground">{item.responsavel || "-"}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (item) => (
+        <Badge
+          variant="outline"
+          className={statusStyles[item.status as keyof typeof statusStyles]}
+        >
+          {statusLabels[item.status as keyof typeof statusLabels]}
+        </Badge>
+      ),
+    },
+    {
+      key: "status_conciliacao",
+      header: "Conciliação",
+      hideOnMobile: true,
+      render: (item) => (
+        <div className="flex items-center justify-center">
+          {conciliacaoIcons[item.status_conciliacao as keyof typeof conciliacaoIcons]}
+        </div>
+      ),
+    },
+    {
+      key: "valor",
+      header: "Valor",
+      render: (item) => (
+        <span
+          className={cn(
+            "font-semibold",
+            item.tipo === "receita" ? "text-success" : "text-destructive"
+          )}
+        >
+          {item.tipo === "receita" ? "+" : "-"}
+          {formatCurrency(Number(item.valor))}
+        </span>
+      ),
+    },
+  ];
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -129,9 +204,9 @@ export default function Lancamentos() {
         <NovoLancamentoDialog />
       </PageHeader>
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <Card className="border-l-4 border-l-success">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -140,7 +215,7 @@ export default function Lancamentos() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-success">
+              <p className="text-xl sm:text-2xl font-bold text-success">
                 {formatCurrency(totalReceitas)}
               </p>
             </CardContent>
@@ -154,7 +229,7 @@ export default function Lancamentos() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-destructive">
+              <p className="text-xl sm:text-2xl font-bold text-destructive">
                 {formatCurrency(totalDespesas)}
               </p>
             </CardContent>
@@ -167,7 +242,7 @@ export default function Lancamentos() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold text-primary">
+              <p className="text-xl sm:text-2xl font-bold text-primary">
                 {formatCurrency(totalReceitas - totalDespesas)}
               </p>
             </CardContent>
@@ -177,141 +252,74 @@ export default function Lancamentos() {
         {/* Filters and Table */}
         <Card>
           <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col gap-4">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
+                <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
                   <TabsTrigger value="todas">Todas</TabsTrigger>
                   <TabsTrigger value="receitas">Receitas</TabsTrigger>
                   <TabsTrigger value="despesas">Despesas</TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              <div className="flex items-center gap-2">
-                <div className="relative">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Buscar transação..."
-                    className="pl-9 w-64"
+                    className="pl-9 w-full"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
-                <Select defaultValue="todos">
-                  <SelectTrigger className="w-40">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todos">Todos</SelectItem>
-                    <SelectItem value="pago">Pago</SelectItem>
-                    <SelectItem value="pendente">Pendente</SelectItem>
-                    <SelectItem value="agendado">Agendado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="icon">
-                  <Download className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Select defaultValue="todos">
+                    <SelectTrigger className="w-full sm:w-40">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos</SelectItem>
+                      <SelectItem value="pago">Pago</SelectItem>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="agendado">Agendado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="icon" className="shrink-0">
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
             {filteredTransactions.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Responsável</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-center">Conciliação</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">
-                        {format(parseISO(transaction.data), "dd/MM/yyyy")}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              "p-1.5 rounded-full",
-                              transaction.tipo === "receita"
-                                ? "bg-success/10 text-success"
-                                : "bg-destructive/10 text-destructive"
-                            )}
-                          >
-                            {transaction.tipo === "receita" ? (
-                              <ArrowDownLeft className="w-3 h-3" />
-                            ) : (
-                              <ArrowUpRight className="w-3 h-3" />
-                            )}
-                          </div>
-                          <span className="truncate max-w-xs">
-                            {transaction.descricao}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{transaction.categoria || "-"}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {transaction.responsavel || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={statusStyles[transaction.status as keyof typeof statusStyles]}
-                        >
-                          {statusLabels[transaction.status as keyof typeof statusLabels]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center">
-                          {conciliacaoIcons[transaction.status_conciliacao as keyof typeof conciliacaoIcons]}
-                        </div>
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right font-semibold",
-                          transaction.tipo === "receita"
-                            ? "text-success"
-                            : "text-destructive"
-                        )}
+              <ResponsiveTable
+                data={filteredTransactions}
+                columns={columns}
+                keyExtractor={(item) => item.id}
+                renderActions={(item) => (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => setDeleteId(item.id)}
                       >
-                        {transaction.tipo === "receita" ? "+" : "-"}
-                        {formatCurrency(Number(transaction.valor))}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => setDeleteId(transaction.id)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              />
             ) : (
               <div className="py-12 text-center">
                 <ArrowDownLeft className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
