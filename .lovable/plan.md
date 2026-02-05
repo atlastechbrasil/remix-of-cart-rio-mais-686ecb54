@@ -147,9 +147,9 @@ className="sm:max-w-lg w-full h-full sm:h-auto"
 3. [x] Adaptar MainLayout - Condicional desktop/mobile
 4. [x] Adaptar PageHeader - Responsivo com breakpoints
 
-### Fase 2: Componentes Compartilhados
-5. [ ] Criar componente ResponsiveTable (tabela/cards)
-6. [ ] Criar componente ResponsiveDialog (fullscreen mobile)
+### Fase 2: Componentes Compartilhados ✅
+5. [x] Criar componente ResponsiveTable (tabela/cards)
+6. [x] Criar componente ResponsiveDialog (fullscreen mobile)
 7. [ ] Padronizar formulários
 
 ### Fase 3: Páginas Principais
