@@ -502,6 +502,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin_do_cartorio: {
+        Args: { p_cartorio_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       user_can_access_cartorio: {
         Args: { _cartorio_id: string; _user_id: string }
