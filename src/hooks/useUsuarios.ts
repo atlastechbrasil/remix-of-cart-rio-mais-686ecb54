@@ -86,6 +86,68 @@ export function useCartorioUsuarios() {
   });
 }
 
+// Hook para listar TODOS os usuários de TODOS os cartórios (somente super admins)
+export function useAllUsuarios() {
+  const { isSuperAdmin } = useTenant();
+
+  return useQuery({
+    queryKey: ["all-usuarios"],
+    queryFn: async (): Promise<(UsuarioCartorio & { cartorio_nome?: string })[]> => {
+      // Buscar todos os vínculos (RLS garante que só super admin pode ver todos)
+      const { data: vinculos, error: vinculosError } = await supabase
+        .from("cartorio_usuarios")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (vinculosError) throw vinculosError;
+      if (!vinculos || vinculos.length === 0) return [];
+
+      // Buscar profiles dos usuários
+      const userIds = [...new Set(vinculos.map((v) => v.user_id))];
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id, nome, avatar_url, cargo")
+        .in("user_id", userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Buscar nomes dos cartórios
+      const cartorioIds = [...new Set(vinculos.map((v) => v.cartorio_id))];
+
+      const { data: cartorios, error: cartoriosError } = await supabase
+        .from("cartorios")
+        .select("id, nome")
+        .in("id", cartorioIds);
+
+      if (cartoriosError) throw cartoriosError;
+
+      // Mapear dados
+      const usuarios = vinculos.map((vinculo) => {
+        const profile = profiles?.find((p) => p.user_id === vinculo.user_id);
+        const cartorio = cartorios?.find((c) => c.id === vinculo.cartorio_id);
+        return {
+          id: vinculo.id,
+          user_id: vinculo.user_id,
+          cartorio_id: vinculo.cartorio_id,
+          role: vinculo.role,
+          ativo: vinculo.ativo,
+          created_at: vinculo.created_at,
+          updated_at: vinculo.updated_at,
+          nome: profile?.nome || null,
+          email: "",
+          avatar_url: profile?.avatar_url || null,
+          cargo: profile?.cargo || null,
+          cartorio_nome: cartorio?.nome || "Cartório não encontrado",
+        };
+      });
+
+      return usuarios;
+    },
+    enabled: isSuperAdmin,
+  });
+}
+
 // Hook para criar vínculo de usuário com cartório
 export function useCreateCartorioUsuario() {
   const queryClient = useQueryClient();

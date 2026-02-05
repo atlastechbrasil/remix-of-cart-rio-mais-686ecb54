@@ -10,6 +10,8 @@ import {
   UserCheck,
   UserX,
   Loader2,
+  Building2,
+  ShieldX,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -31,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   useCartorioUsuarios,
+  useAllUsuarios,
   usePerfisAcesso,
   useUpdateCartorioUsuario,
   useDeleteCartorioUsuario,
@@ -62,8 +65,15 @@ export default function Usuarios() {
   const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
   const isMobile = useIsMobile();
 
-  const { cartorioAtivo, isSuperAdmin } = useTenant();
-  const { data: usuarios = [], isLoading: loadingUsuarios } = useCartorioUsuarios();
+  const { cartorioAtivo, isSuperAdmin, isLoading: tenantLoading } = useTenant();
+  
+  // Super admins veem todos os usuários; admins de cartório veem só os do seu cartório
+  const { data: allUsuarios = [], isLoading: loadingAllUsuarios } = useAllUsuarios();
+  const { data: cartorioUsuarios = [], isLoading: loadingCartorioUsuarios } = useCartorioUsuarios();
+  
+  const usuarios = isSuperAdmin ? allUsuarios : cartorioUsuarios;
+  const loadingUsuarios = isSuperAdmin ? loadingAllUsuarios : loadingCartorioUsuarios;
+  
   const { data: perfis = [], isLoading: loadingPerfis } = usePerfisAcesso();
   const updateUsuario = useUpdateCartorioUsuario();
   const deleteUsuario = useDeleteCartorioUsuario();
@@ -84,7 +94,8 @@ export default function Usuarios() {
   const filteredUsuarios = usuarios.filter(
     (u) =>
       u.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+      u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ("cartorio_nome" in u && typeof u.cartorio_nome === "string" && u.cartorio_nome.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleToggleAtivo = (usuario: UsuarioCartorio) => {
@@ -106,12 +117,35 @@ export default function Usuarios() {
     }
   };
 
-  if (!cartorioAtivo) {
+  // Tela de carregamento inicial
+  if (tenantLoading) {
     return (
       <MainLayout>
         <PageHeader title="Usuários e Perfis" description="Gerenciamento de acessos ao sistema" />
         <div className="flex-1 p-6 flex items-center justify-center">
-          <p className="text-muted-foreground">Selecione um cartório para gerenciar usuários.</p>
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // Bloquear acesso para usuários que não são super admin nem admin do cartório
+  // Por enquanto, apenas super admins têm acesso a esta tela
+  if (!isSuperAdmin) {
+    return (
+      <MainLayout>
+        <PageHeader title="Usuários e Perfis" description="Gerenciamento de acessos ao sistema" />
+        <div className="flex-1 p-6 flex flex-col items-center justify-center gap-4">
+          <div className="p-4 rounded-full bg-destructive/10">
+            <ShieldX className="w-12 h-12 text-destructive" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-xl font-semibold text-foreground mb-2">Acesso Restrito</h2>
+            <p className="text-muted-foreground max-w-md">
+              Você não tem permissão para acessar esta página. 
+              Apenas super administradores podem gerenciar usuários do sistema.
+            </p>
+          </div>
         </div>
       </MainLayout>
     );
@@ -121,7 +155,7 @@ export default function Usuarios() {
     <MainLayout>
       <PageHeader
         title="Usuários e Perfis"
-        description={isMobile ? undefined : `Gerenciamento de acessos - ${cartorioAtivo.nome}`}
+        description={isMobile ? undefined : (isSuperAdmin ? "Gerenciamento global de usuários do sistema" : `Gerenciamento de acessos - ${cartorioAtivo?.nome || ""}`)}
       >
         <Button className="gap-2" onClick={() => setNovoUsuarioOpen(true)}>
           <Plus className="w-4 h-4" />
@@ -136,7 +170,7 @@ export default function Usuarios() {
           <ScrollArea className="w-full">
             <TabsList className="w-full sm:w-auto">
               <TabsTrigger value="usuarios" className="flex-1 sm:flex-none">
-                Usuários
+                Usuários {isSuperAdmin && `(${filteredUsuarios.length})`}
               </TabsTrigger>
               <TabsTrigger value="perfis" className="flex-1 sm:flex-none">
                 Perfis de Acesso
@@ -151,7 +185,7 @@ export default function Usuarios() {
               <div className="relative flex-1 sm:max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar por nome ou e-mail..."
+                  placeholder={isSuperAdmin ? "Buscar por nome, e-mail ou cartório..." : "Buscar por nome ou e-mail..."}
                   className="pl-9"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -170,7 +204,7 @@ export default function Usuarios() {
             {!loadingUsuarios && filteredUsuarios.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">
-                  {searchTerm ? "Nenhum usuário encontrado." : "Nenhum usuário vinculado a este cartório."}
+                  {searchTerm ? "Nenhum usuário encontrado." : "Nenhum usuário cadastrado no sistema."}
                 </p>
                 <Button onClick={() => setNovoUsuarioOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -249,6 +283,13 @@ export default function Usuarios() {
                       </div>
 
                       <div className="mt-3 sm:mt-4 space-y-1.5 sm:space-y-2">
+                        {/* Mostrar cartório para super admins */}
+                        {isSuperAdmin && "cartorio_nome" in usuario && (
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                            <Building2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                            <span className="truncate">{usuario.cartorio_nome}</span>
+                          </div>
+                        )}
                         {usuario.email && (
                           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                             <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
