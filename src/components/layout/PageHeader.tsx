@@ -1,7 +1,6 @@
 import * as React from "react";
-import { Bell, Search, Building2, ChevronDown, Check } from "lucide-react";
+import { Bell, Building2, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useTenant } from "@/contexts/TenantContext";
 import {
   DropdownMenu,
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GlobalSearch } from "./GlobalSearch";
 
 interface PageHeaderProps {
   title: string;
@@ -87,14 +87,8 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-4">
-          {/* Search - hidden on mobile */}
-          <div className="relative hidden lg:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              className="w-48 xl:w-64 pl-9 bg-muted/50 border-0 focus-visible:ring-1"
-            />
-          </div>
+          {/* Global Search - hidden on mobile */}
+          <GlobalSearch />
 
           {/* Cartório Selector - hidden on mobile (shown in MobileHeader) */}
           <HeaderCartorioSelector />
