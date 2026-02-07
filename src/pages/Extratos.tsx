@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { ImportarExtratoDialog } from "@/components/extratos/ImportarExtratoDialog";
 import { FiltrosExtratos } from "@/components/extratos/FiltrosExtratos";
 import { DetalhesExtratoDialog } from "@/components/extratos/DetalhesExtratoDialog";
+import { DownloadExtratoDialog } from "@/components/extratos/DownloadExtratoDialog";
 import { useExtratos, useContasBancarias } from "@/hooks/useConciliacao";
 import { useFiltrosExtratos } from "@/hooks/useFiltrosExtratos";
 import { format, parseISO } from "date-fns";
@@ -50,9 +51,10 @@ export default function Extratos() {
   const { data: extratos, isLoading: loadingExtratos } = useExtratos();
   const { data: contas } = useContasBancarias();
   
-  // Estado para dialog de detalhes
+  // Estado para dialogs
   const [selectedExtrato, setSelectedExtrato] = useState<ExtratoItem | null>(null);
   const [showDetalhes, setShowDetalhes] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
 
   const {
     filtros,
@@ -72,6 +74,11 @@ export default function Extratos() {
   const handleViewDetails = (extrato: ExtratoItem) => {
     setSelectedExtrato(extrato);
     setShowDetalhes(true);
+  };
+
+  const handleDownload = (extrato: ExtratoItem) => {
+    setSelectedExtrato(extrato);
+    setShowDownload(true);
   };
 
   // Aplicar filtros aos extratos
@@ -170,13 +177,25 @@ export default function Extratos() {
         size="icon" 
         className="h-8 w-8"
         onClick={() => handleViewDetails(item)}
+        title="Ver detalhes"
       >
         <Eye className="w-4 h-4" />
       </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => handleDownload(item)}
+        title="Baixar extrato"
+      >
         <Download className="w-4 h-4" />
       </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 text-destructive"
+        title="Excluir extrato"
+      >
         <Trash2 className="w-4 h-4" />
       </Button>
     </>
@@ -331,6 +350,13 @@ export default function Extratos() {
         extrato={selectedExtrato}
         open={showDetalhes}
         onOpenChange={setShowDetalhes}
+      />
+
+      {/* Dialog de Download */}
+      <DownloadExtratoDialog
+        extrato={selectedExtrato}
+        open={showDownload}
+        onOpenChange={setShowDownload}
       />
     </MainLayout>
   );
