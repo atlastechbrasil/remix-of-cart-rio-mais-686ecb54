@@ -462,16 +462,12 @@ export function useUpdateProfile() {
       nome?: string;
       cargo?: string;
     }) => {
-      const updates: Record<string, unknown> = {};
-      if (nome !== undefined) updates.nome = nome;
-      if (cargo !== undefined) updates.cargo = cargo;
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("user_id", userId)
-        .select()
-        .maybeSingle();
+      // Usar RPC com security definer para permitir super admins atualizarem outros perfis
+      const { data, error } = await supabase.rpc("update_user_profile", {
+        target_user_id: userId,
+        new_nome: nome ?? null,
+        new_cargo: cargo ?? null,
+      });
 
 
       if (error) throw error;

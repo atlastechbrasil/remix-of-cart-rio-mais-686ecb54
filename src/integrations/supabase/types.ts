@@ -514,6 +514,10 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      update_user_profile: {
+        Args: { new_cargo?: string; new_nome?: string; target_user_id: string }
+        Returns: Json
+      }
       user_can_access_cartorio: {
         Args: { _cartorio_id: string; _user_id: string }
         Returns: boolean
