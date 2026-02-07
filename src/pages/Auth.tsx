@@ -148,7 +148,7 @@ export default function Auth() {
                 <FormField
                   control={forgotPasswordForm.control}
                   name="email"
-                  render={({ field }) => (
+                  render={({ field: { onChange, onBlur, value, name, ref } }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
@@ -156,7 +156,11 @@ export default function Auth() {
                           type="email"
                           placeholder="seu@email.com"
                           autoComplete="email"
-                          {...field}
+                          name={name}
+                          ref={ref}
+                          value={value}
+                          onChange={onChange}
+                          onBlur={onBlur}
                         />
                       </FormControl>
                       <FormMessage />
