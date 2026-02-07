@@ -4,9 +4,6 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  Eye,
-  Trash2,
-  Download,
   Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -19,44 +16,22 @@ import { FiltrosExtratos } from "@/components/extratos/FiltrosExtratos";
 import { DetalhesExtratoDialog } from "@/components/extratos/DetalhesExtratoDialog";
 import { DownloadExtratoDialog } from "@/components/extratos/DownloadExtratoDialog";
 import { ExcluirExtratoDialog } from "@/components/extratos/ExcluirExtratoDialog";
+import { ExcluirExtratosBatchDialog } from "@/components/extratos/ExcluirExtratosBatchDialog";
+import { ExtratosTable, type ExtratoItem } from "@/components/extratos/ExtratosTable";
 import { useExtratos, useContasBancarias } from "@/hooks/useConciliacao";
 import { useFiltrosExtratos } from "@/hooks/useFiltrosExtratos";
-import { format, parseISO } from "date-fns";
-import { ResponsiveTable, type Column } from "@/components/ui/responsive-table";
-
-interface ExtratoItem {
-  id: string;
-  arquivo: string;
-  conta_id: string;
-  conta_bancaria: { banco: string; agencia?: string; conta: string } | null;
-  periodo_inicio: string;
-  periodo_fim: string;
-  total_lancamentos: number;
-  status: string;
-  created_at: string;
-}
-
-const statusStyles: Record<string, string> = {
-  processado: "pendente",
-  conciliado: "conciliado",
-  erro: "divergente",
-};
-
-const statusLabels: Record<string, string> = {
-  processado: "Em Processamento",
-  conciliado: "Conciliado",
-  erro: "Com Erros",
-};
 
 export default function Extratos() {
   const { data: extratos, isLoading: loadingExtratos } = useExtratos();
   const { data: contas } = useContasBancarias();
-  
+
   // Estado para dialogs
   const [selectedExtrato, setSelectedExtrato] = useState<ExtratoItem | null>(null);
+  const [selectedExtratos, setSelectedExtratos] = useState<ExtratoItem[]>([]);
   const [showDetalhes, setShowDetalhes] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [showExcluir, setShowExcluir] = useState(false);
+  const [showExcluirBatch, setShowExcluirBatch] = useState(false);
 
   const {
     filtros,
@@ -88,6 +63,11 @@ export default function Extratos() {
     setShowExcluir(true);
   };
 
+  const handleDeleteBatch = (extratos: ExtratoItem[]) => {
+    setSelectedExtratos(extratos);
+    setShowExcluirBatch(true);
+  };
+
   // Aplicar filtros aos extratos
   const extratosData = useMemo(() => {
     const data = (extratos || []) as ExtratoItem[];
@@ -95,12 +75,15 @@ export default function Extratos() {
   }, [extratos, aplicarFiltros]);
 
   // Estatísticas baseadas nos dados filtrados
-  const stats = useMemo(() => ({
-    total: extratosData.length,
-    conciliados: extratosData.filter((e) => e.status === "conciliado").length,
-    processando: extratosData.filter((e) => e.status === "processado").length,
-    erros: extratosData.filter((e) => e.status === "erro").length,
-  }), [extratosData]);
+  const stats = useMemo(
+    () => ({
+      total: extratosData.length,
+      conciliados: extratosData.filter((e) => e.status === "conciliado").length,
+      processando: extratosData.filter((e) => e.status === "processado").length,
+      erros: extratosData.filter((e) => e.status === "erro").length,
+    }),
+    [extratosData]
+  );
 
   if (loadingExtratos) {
     return (
@@ -117,97 +100,6 @@ export default function Extratos() {
     banco: c.banco,
     conta: c.conta,
   }));
-
-  const columns: Column<ExtratoItem>[] = [
-    {
-      key: "arquivo",
-      header: "Arquivo",
-      render: (item) => (
-        <div className="flex items-center gap-2">
-          <FileSpreadsheet className="w-4 h-4 text-primary flex-shrink-0" />
-          <span className="font-medium text-sm truncate">{item.arquivo}</span>
-        </div>
-      ),
-    },
-    {
-      key: "conta_bancaria",
-      header: "Banco / Conta",
-      render: (item) => (
-        <div>
-          <p className="font-medium text-sm">{item.conta_bancaria?.banco || "N/A"}</p>
-          <p className="text-xs text-muted-foreground">{item.conta_bancaria?.conta || "N/A"}</p>
-        </div>
-      ),
-    },
-    {
-      key: "periodo",
-      header: "Período",
-      hideOnMobile: true,
-      render: (item) => (
-        <span className="text-sm text-muted-foreground">
-          {format(parseISO(item.periodo_inicio), "dd/MM/yyyy")} -{" "}
-          {format(parseISO(item.periodo_fim), "dd/MM/yyyy")}
-        </span>
-      ),
-    },
-    {
-      key: "total_lancamentos",
-      header: "Lançamentos",
-      className: "text-center",
-      render: (item) => <span className="font-medium">{item.total_lancamentos}</span>,
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (item) => (
-        <Badge variant="outline" className={statusStyles[item.status] || ""}>
-          {statusLabels[item.status] || item.status}
-        </Badge>
-      ),
-    },
-    {
-      key: "created_at",
-      header: "Importado em",
-      hideOnMobile: true,
-      render: (item) => (
-        <span className="text-sm text-muted-foreground">
-          {format(parseISO(item.created_at), "dd/MM/yyyy HH:mm")}
-        </span>
-      ),
-    },
-  ];
-
-  const renderActions = (item: ExtratoItem) => (
-    <>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8"
-        onClick={() => handleViewDetails(item)}
-        title="Ver detalhes"
-      >
-        <Eye className="w-4 h-4" />
-      </Button>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8"
-        onClick={() => handleDownload(item)}
-        title="Baixar extrato"
-      >
-        <Download className="w-4 h-4" />
-      </Button>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 text-destructive hover:text-destructive"
-        onClick={() => handleDelete(item)}
-        title="Excluir extrato"
-      >
-        <Trash2 className="w-4 h-4" />
-      </Button>
-    </>
-  );
 
   return (
     <MainLayout>
@@ -315,11 +207,12 @@ export default function Extratos() {
           </CardHeader>
           <CardContent className="px-3 sm:px-6 pb-4 sm:pb-6">
             {extratosData.length > 0 ? (
-              <ResponsiveTable
+              <ExtratosTable
                 data={extratosData}
-                columns={columns}
-                keyExtractor={(item) => item.id}
-                renderActions={renderActions}
+                onViewDetails={handleViewDetails}
+                onDownload={handleDownload}
+                onDelete={handleDelete}
+                onDeleteBatch={handleDeleteBatch}
               />
             ) : (
               <div className="py-8 sm:py-12 text-center">
@@ -367,11 +260,18 @@ export default function Extratos() {
         onOpenChange={setShowDownload}
       />
 
-      {/* Dialog de Exclusão */}
+      {/* Dialog de Exclusão Individual */}
       <ExcluirExtratoDialog
         extrato={selectedExtrato}
         open={showExcluir}
         onOpenChange={setShowExcluir}
+      />
+
+      {/* Dialog de Exclusão em Lote */}
+      <ExcluirExtratosBatchDialog
+        extratos={selectedExtratos}
+        open={showExcluirBatch}
+        onOpenChange={setShowExcluirBatch}
       />
     </MainLayout>
   );
