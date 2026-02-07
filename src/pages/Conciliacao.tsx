@@ -347,58 +347,58 @@ export default function Conciliacao() {
         </Card>
 
         {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMainTab("conciliados")}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden" onClick={() => setMainTab("conciliados")}>
             <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-success/10">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-success/10 shrink-0">
                   <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Conciliados</p>
-                  <p className="text-lg sm:text-2xl font-bold text-success">{stats.conciliados}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">Conciliados</p>
+                  <p className="text-base sm:text-2xl font-bold text-success">{stats.conciliados}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMainTab("pendentes")}>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden" onClick={() => setMainTab("pendentes")}>
             <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-warning/10">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-warning/10 shrink-0">
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Pendentes</p>
-                  <p className="text-lg sm:text-2xl font-bold text-warning">{stats.pendentes}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">Pendentes</p>
+                  <p className="text-base sm:text-2xl font-bold text-warning">{stats.pendentes}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMainTab("divergentes")}>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors overflow-hidden" onClick={() => setMainTab("divergentes")}>
             <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-destructive/10">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-destructive/10 shrink-0">
                   <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Divergentes</p>
-                  <p className="text-lg sm:text-2xl font-bold text-destructive">{stats.divergentes}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">Divergentes</p>
+                  <p className="text-base sm:text-2xl font-bold text-destructive">{stats.divergentes}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="overflow-hidden">
             <CardContent className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 shrink-0">
                   <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Taxa</p>
-                  <p className="text-lg sm:text-2xl font-bold text-primary">{stats.taxaConciliacao}%</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-sm text-muted-foreground truncate">Taxa</p>
+                  <p className="text-base sm:text-2xl font-bold text-primary">{stats.taxaConciliacao}%</p>
                 </div>
               </div>
             </CardContent>

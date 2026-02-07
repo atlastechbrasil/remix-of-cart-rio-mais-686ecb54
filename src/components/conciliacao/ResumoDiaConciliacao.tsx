@@ -102,39 +102,39 @@ export function ResumoDiaConciliacao({
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="text-center p-3 rounded-lg bg-success/10">
-            <CheckCircle2 className="w-5 h-5 text-success mx-auto mb-1" />
-            <p className="text-2xl font-bold text-success">{stats.conciliados}</p>
-            <p className="text-xs text-muted-foreground">Conciliados</p>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="text-center p-2 sm:p-3 rounded-lg bg-success/10 min-w-0">
+            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success mx-auto mb-1" />
+            <p className="text-lg sm:text-2xl font-bold text-success truncate">{stats.conciliados}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Conciliados</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-warning/10">
-            <Clock className="w-5 h-5 text-warning mx-auto mb-1" />
-            <p className="text-2xl font-bold text-warning">{stats.pendentes}</p>
-            <p className="text-xs text-muted-foreground">Pendentes</p>
+          <div className="text-center p-2 sm:p-3 rounded-lg bg-warning/10 min-w-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning mx-auto mb-1" />
+            <p className="text-lg sm:text-2xl font-bold text-warning truncate">{stats.pendentes}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Pendentes</p>
           </div>
-          <div className="text-center p-3 rounded-lg bg-destructive/10">
-            <AlertTriangle className="w-5 h-5 text-destructive mx-auto mb-1" />
-            <p className="text-2xl font-bold text-destructive">{stats.divergentes}</p>
-            <p className="text-xs text-muted-foreground">Divergentes</p>
+          <div className="text-center p-2 sm:p-3 rounded-lg bg-destructive/10 min-w-0">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive mx-auto mb-1" />
+            <p className="text-lg sm:text-2xl font-bold text-destructive truncate">{stats.divergentes}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Divergentes</p>
           </div>
         </div>
 
         {/* Values Summary */}
-        <div className="space-y-2 pt-2 border-t">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Total Extrato:</span>
-            <span className="font-medium">{formatCurrency(stats.valorTotalExtrato)}</span>
+        <div className="space-y-2 pt-2 border-t overflow-hidden">
+          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+            <span className="text-muted-foreground shrink-0">Total Extrato:</span>
+            <span className="font-medium truncate">{formatCurrency(stats.valorTotalExtrato)}</span>
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Total Lançamentos:</span>
-            <span className="font-medium">{formatCurrency(stats.valorTotalLancamentos)}</span>
+          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+            <span className="text-muted-foreground shrink-0">Total Lançamentos:</span>
+            <span className="font-medium truncate">{formatCurrency(stats.valorTotalLancamentos)}</span>
           </div>
           {stats.diferencaValores !== 0 && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Diferença:</span>
+            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+              <span className="text-muted-foreground shrink-0">Diferença:</span>
               <span className={cn(
-                "font-medium",
+                "font-medium truncate",
                 stats.diferencaValores > 0 ? "text-success" : "text-destructive"
               )}>
                 {stats.diferencaValores > 0 ? "+" : ""}{formatCurrency(stats.diferencaValores)}

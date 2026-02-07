@@ -40,7 +40,7 @@ export function ItemCard({
     <div
       onClick={() => isSelectable && onSelect()}
       className={cn(
-        "p-3 rounded-lg border transition-all",
+        "p-3 rounded-lg border transition-all overflow-hidden",
         isSelectable ? "cursor-pointer" : "cursor-default opacity-60",
         isSelected
           ? "border-primary bg-primary/5 ring-1 ring-primary"
@@ -49,18 +49,18 @@ export function ItemCard({
           : ""
       )}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{descricao}</p>
+          <p className="text-sm font-medium line-clamp-2 break-words">{descricao}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {format(parseISO(data), "dd/MM/yyyy")}
             {categoria && ` • ${categoria}`}
           </p>
         </div>
-        <div className="text-right">
+        <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 sm:gap-1 shrink-0">
           <p
             className={cn(
-              "text-sm font-semibold",
+              "text-sm font-semibold whitespace-nowrap",
               isPositive ? "text-success" : "text-destructive"
             )}
           >
@@ -69,7 +69,7 @@ export function ItemCard({
           </p>
           <Badge
             variant="outline"
-            className={cn("text-xs mt-1", statusStyles[status])}
+            className={cn("text-xs shrink-0", statusStyles[status])}
           >
             {statusLabels[status]}
           </Badge>
