@@ -97,7 +97,7 @@ export function useConciliacoesByDate(data?: Date) {
 
       const dateStr = format(data, "yyyy-MM-dd");
 
-      // First, fetch all conciliacoes with their related data
+      // Fetch all conciliacoes with their related data
       let query = supabase
         .from("conciliacoes")
         .select(`
@@ -107,8 +107,9 @@ export function useConciliacoesByDate(data?: Date) {
         `)
         .order("conciliado_em", { ascending: false });
 
+      // Filter by cartorio - include records with matching cartorio_id OR null cartorio_id
       if (cartorioAtivo) {
-        query = query.eq("cartorio_id", cartorioAtivo.id);
+        query = query.or(`cartorio_id.eq.${cartorioAtivo.id},cartorio_id.is.null`);
       }
 
       const { data: conciliacoes, error } = await query;
