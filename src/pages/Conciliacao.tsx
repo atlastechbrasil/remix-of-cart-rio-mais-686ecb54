@@ -10,6 +10,8 @@ import {
   Link2,
   Loader2,
   Search,
+  Sparkles,
+  Lightbulb,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -52,8 +54,11 @@ import { EditarConciliacaoDialog } from "@/components/conciliacao/EditarConcilia
 import { ResumoDiaConciliacao } from "@/components/conciliacao/ResumoDiaConciliacao";
 import { FechamentoDiaDialog } from "@/components/conciliacao/FechamentoDiaDialog";
 import { HistoricoConciliacoes } from "@/components/conciliacao/HistoricoConciliacoes";
+import { SugestoesConciliacaoDialog } from "@/components/conciliacao/SugestoesConciliacaoDialog";
+import { AutoConciliacaoDialog } from "@/components/conciliacao/AutoConciliacaoDialog";
 import { useDesvincularConciliacao } from "@/hooks/useConciliacao";
-import type { PresetPeriodo, ConciliacaoTabValue, ConciliacaoDetalhada } from "@/types/conciliacao";
+import { getBestMatch } from "@/lib/conciliacao-matcher";
+import type { PresetPeriodo, ConciliacaoTabValue, ConciliacaoDetalhada, ExtratoItem } from "@/types/conciliacao";
 
 export default function Conciliacao() {
   const isMobile = useIsMobile();
@@ -74,6 +79,9 @@ export default function Conciliacao() {
   const [detailsConciliacao, setDetailsConciliacao] = useState<ConciliacaoDetalhada | null>(null);
   const [editConciliacao, setEditConciliacao] = useState<ConciliacaoDetalhada | null>(null);
   const [showFechamentoDialog, setShowFechamentoDialog] = useState(false);
+  const [showSugestoesDialog, setShowSugestoesDialog] = useState(false);
+  const [showAutoDialog, setShowAutoDialog] = useState(false);
+  const [selectedExtratoItem, setSelectedExtratoItem] = useState<ExtratoItem | null>(null);
   
   const desvincular = useDesvincularConciliacao();
 
@@ -186,6 +194,55 @@ export default function Conciliacao() {
   const handleConfirmFechamento = () => {
     // TODO: Implement fechamento logic (mark day as closed in database)
     setShowFechamentoDialog(false);
+  };
+
+  // Handle opening suggestions dialog when selecting an extrato item
+  const handleExtratoSelect = (id: string | null) => {
+    setSelectedExtrato(id);
+    if (id && lancamentosPendentes.length > 0) {
+      const item = extratoItens?.find((e) => e.id === id);
+      if (item) {
+        setSelectedExtratoItem(item);
+        // Check if there's a good match suggestion
+        const bestMatch = getBestMatch(item, lancamentosPendentes);
+        if (bestMatch && bestMatch.score >= 80) {
+          // Auto-select the best match if confidence is high
+          setSelectedLancamento(bestMatch.lancamento.id);
+        }
+      }
+    } else {
+      setSelectedExtratoItem(null);
+    }
+  };
+
+  // Handle selecting a suggestion from the dialog
+  const handleSelectSugestao = (lancamento: { id: string }) => {
+    setSelectedLancamento(lancamento.id);
+    setShowSugestoesDialog(false);
+  };
+
+  // Handle auto-conciliacao
+  const handleAutoConciliacao = async (
+    matches: Array<{ extratoItem: ExtratoItem; lancamento: { id: string; valor: number } }>
+  ) => {
+    for (const match of matches) {
+      const diferenca =
+        Math.abs(Number(match.extratoItem.valor)) - Number(match.lancamento.valor);
+
+      await new Promise<void>((resolve, reject) => {
+        vincular.mutate(
+          {
+            extratoItemId: match.extratoItem.id,
+            lancamentoId: match.lancamento.id,
+            diferenca,
+          },
+          {
+            onSuccess: () => resolve(),
+            onError: (err) => reject(err),
+          }
+        );
+      });
+    }
   };
 
   const isLoading = loadingContas;
@@ -329,8 +386,8 @@ export default function Conciliacao() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="text-lg">Conciliação do Dia</CardTitle>
                 {mainTab === "pendentes" && (
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1 sm:w-48">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 sm:w-40">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         placeholder="Buscar..."
@@ -339,10 +396,26 @@ export default function Conciliacao() {
                         className="pl-8 h-9"
                       />
                     </div>
-                    <Button variant="outline" size="sm" className="hidden sm:flex">
-                      <Filter className="w-4 h-4 mr-2" />
-                      Filtros
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAutoDialog(true)}
+                      disabled={stats.pendentes === 0}
+                      className="hidden sm:flex"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Auto
                     </Button>
+                    {selectedExtrato && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSugestoesDialog(true)}
+                      >
+                        <Lightbulb className="w-4 h-4 mr-2" />
+                        <span className="hidden sm:inline">Sugestões</span>
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
@@ -387,7 +460,7 @@ export default function Conciliacao() {
                             <ExtratoList
                               items={filteredExtratoItens}
                               selectedId={selectedExtrato}
-                              onSelect={setSelectedExtrato}
+                              onSelect={handleExtratoSelect}
                               isLoading={loadingExtrato}
                               contaInfo={contaAtiva ? {
                                 banco: contaAtiva.banco,
@@ -427,7 +500,7 @@ export default function Conciliacao() {
                         <ExtratoList
                           items={filteredExtratoItens}
                           selectedId={selectedExtrato}
-                          onSelect={setSelectedExtrato}
+                          onSelect={handleExtratoSelect}
                           isLoading={loadingExtrato}
                           contaInfo={contaAtiva ? {
                             banco: contaAtiva.banco,
@@ -501,6 +574,23 @@ export default function Conciliacao() {
         stats={stats}
         conciliacoes={conciliacoes || []}
         onConfirm={handleConfirmFechamento}
+      />
+
+      <SugestoesConciliacaoDialog
+        open={showSugestoesDialog}
+        onOpenChange={setShowSugestoesDialog}
+        extratoItem={selectedExtratoItem}
+        lancamentos={lancamentosPendentes}
+        onSelectSugestao={handleSelectSugestao}
+        isVinculando={vincular.isPending}
+      />
+
+      <AutoConciliacaoDialog
+        open={showAutoDialog}
+        onOpenChange={setShowAutoDialog}
+        extratoItens={filteredExtratoItens}
+        lancamentos={lancamentosPendentes}
+        onConfirm={handleAutoConciliacao}
       />
     </MainLayout>
   );
