@@ -4,7 +4,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,20 +16,16 @@ import {
 } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import fincartLogo from "@/assets/fincart-logo.png";
+import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
 });
 
-const forgotPasswordSchema = z.object({
-  email: z.string().email("Email inválido"),
-});
-
 type LoginFormData = z.infer<typeof loginSchema>;
-type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
@@ -52,13 +47,6 @@ export default function Auth() {
     },
   });
 
-  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
-    resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: {
-      email: "",
-    },
-  });
-
   const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true);
     const { error } = await signIn(data.email, data.password);
@@ -76,45 +64,6 @@ export default function Auth() {
       toast.success("Login realizado com sucesso!");
       navigate("/");
     }
-  };
-
-  const handleForgotPassword = async (data: ForgotPasswordFormData) => {
-    setIsLoading(true);
-    
-    // Use the reset-password page as redirect URL
-    const redirectUrl = `${window.location.origin}/reset-password`;
-    
-    const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo: redirectUrl,
-    });
-
-    if (supabaseError) {
-      setIsLoading(false);
-      toast.error("Erro ao enviar email de recuperação. Tente novamente.");
-      return;
-    }
-
-    // Send custom email via Resend
-    try {
-      const { error: functionError } = await supabase.functions.invoke('send-password-reset', {
-        body: {
-          email: data.email,
-          resetUrl: redirectUrl,
-        },
-      });
-
-      if (functionError) {
-        console.error("Error sending custom email:", functionError);
-        // Even if custom email fails, Supabase already sent the default one
-      }
-    } catch (err) {
-      console.error("Error invoking edge function:", err);
-    }
-
-    setIsLoading(false);
-    toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
-    forgotPasswordForm.reset();
-    setShowForgotPassword(false);
   };
 
   if (loading) {
@@ -143,49 +92,7 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           {showForgotPassword ? (
-            <Form {...forgotPasswordForm}>
-              <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)} className="space-y-4">
-                <FormField
-                  control={forgotPasswordForm.control}
-                  name="email"
-                  render={({ field, fieldState }) => (
-                    <FormItem>
-                      <FormLabel htmlFor="forgot-email">Email</FormLabel>
-                      <Input
-                        id="forgot-email"
-                        type="email"
-                        placeholder="seu@email.com"
-                        autoComplete="email"
-                        aria-invalid={!!fieldState.error}
-                        {...field}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Enviando...
-                    </>
-                  ) : (
-                    "Enviar Link de Recuperação"
-                  )}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => setShowForgotPassword(false)}
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Voltar ao Login
-                </Button>
-              </form>
-            </Form>
+            <ForgotPasswordForm onBack={() => setShowForgotPassword(false)} />
           ) : (
             <Form {...loginForm}>
               <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
