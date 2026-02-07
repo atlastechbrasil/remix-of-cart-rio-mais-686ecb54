@@ -72,21 +72,21 @@ Implementar funcionalidades completas para gerenciamento de extratos bancários:
 
 ---
 
-## Fase 4: Exclusão de Extrato
+## Fase 4: Exclusão de Extrato ✅
 
 ### 4.1 Dialog ExcluirExtratoDialog
-- [ ] Criar `src/components/extratos/ExcluirExtratoDialog.tsx`
-- [ ] Confirmação antes de excluir
-- [ ] Alertas:
+- [x] Criar `src/components/extratos/ExcluirExtratoDialog.tsx`
+- [x] Confirmação antes de excluir
+- [x] Alertas:
   - Número de itens que serão excluídos
   - Se há itens já conciliados (warning)
-- [ ] Opção de excluir mesmo com itens conciliados (checkbox de confirmação)
+- [x] Opção de excluir mesmo com itens conciliados (checkbox de confirmação)
 
 ### 4.2 Hook useDeleteExtrato
-- [ ] Mutation para excluir extrato
-- [ ] Excluir extrato_itens relacionados (cascade)
-- [ ] Desfazer vínculos de conciliação se existirem
-- [ ] Invalidar cache após exclusão
+- [x] Mutation para excluir extrato
+- [x] Excluir extrato_itens relacionados (cascade)
+- [x] Desfazer vínculos de conciliação se existirem
+- [x] Invalidar cache após exclusão
 
 ---
 

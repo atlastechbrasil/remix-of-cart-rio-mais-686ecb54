@@ -613,3 +613,81 @@ export function useConciliacaoStats(contaId?: string) {
 
   return stats;
 }
+
+// Hook para excluir extrato com todos os itens e desfazer conciliações
+export function useDeleteExtrato() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (extratoId: string) => {
+      // 1. Buscar todos os itens do extrato para identificar conciliações
+      const { data: itens, error: itensError } = await supabase
+        .from("extrato_itens")
+        .select("id, lancamento_vinculado_id, status_conciliacao")
+        .eq("extrato_id", extratoId);
+
+      if (itensError) throw itensError;
+
+      // 2. Para itens conciliados, desfazer os vínculos nos lançamentos
+      const itensComVinculo = itens?.filter((i) => i.lancamento_vinculado_id) || [];
+      
+      if (itensComVinculo.length > 0) {
+        const lancamentoIds = itensComVinculo.map((i) => i.lancamento_vinculado_id!);
+        
+        // Atualizar lançamentos vinculados para pendente
+        const { error: updateLancError } = await supabase
+          .from("lancamentos")
+          .update({
+            status_conciliacao: "pendente",
+            extrato_item_vinculado_id: null,
+          })
+          .in("id", lancamentoIds);
+
+        if (updateLancError) throw updateLancError;
+
+        // Remover registros de conciliação
+        const itemIds = itensComVinculo.map((i) => i.id);
+        const { error: deleteConcError } = await supabase
+          .from("conciliacoes")
+          .delete()
+          .in("extrato_item_id", itemIds);
+
+        if (deleteConcError) throw deleteConcError;
+      }
+
+      // 3. Excluir todos os itens do extrato
+      const { error: deleteItensError } = await supabase
+        .from("extrato_itens")
+        .delete()
+        .eq("extrato_id", extratoId);
+
+      if (deleteItensError) throw deleteItensError;
+
+      // 4. Excluir o extrato
+      const { error: deleteExtratoError } = await supabase
+        .from("extratos")
+        .delete()
+        .eq("id", extratoId);
+
+      if (deleteExtratoError) throw deleteExtratoError;
+
+      return { success: true, itensRemovidos: itens?.length || 0 };
+    },
+    onSuccess: (data) => {
+      // Invalidar todas as queries relacionadas
+      queryClient.invalidateQueries({ queryKey: ["extratos"] });
+      queryClient.invalidateQueries({ queryKey: ["extrato-itens"] });
+      queryClient.invalidateQueries({ queryKey: ["extrato-itens-conta"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes-data"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["lancamentos-data"] });
+      queryClient.invalidateQueries({ queryKey: ["pendentes-count"] });
+      toast.success(`Extrato excluído! ${data.itensRemovidos} lançamentos removidos.`);
+    },
+    onError: (error) => {
+      toast.error("Erro ao excluir extrato: " + error.message);
+    },
+  });
+}
