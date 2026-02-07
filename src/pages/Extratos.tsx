@@ -18,6 +18,7 @@ import { ImportarExtratoDialog } from "@/components/extratos/ImportarExtratoDial
 import { FiltrosExtratos } from "@/components/extratos/FiltrosExtratos";
 import { DetalhesExtratoDialog } from "@/components/extratos/DetalhesExtratoDialog";
 import { DownloadExtratoDialog } from "@/components/extratos/DownloadExtratoDialog";
+import { ExcluirExtratoDialog } from "@/components/extratos/ExcluirExtratoDialog";
 import { useExtratos, useContasBancarias } from "@/hooks/useConciliacao";
 import { useFiltrosExtratos } from "@/hooks/useFiltrosExtratos";
 import { format, parseISO } from "date-fns";
@@ -55,6 +56,7 @@ export default function Extratos() {
   const [selectedExtrato, setSelectedExtrato] = useState<ExtratoItem | null>(null);
   const [showDetalhes, setShowDetalhes] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+  const [showExcluir, setShowExcluir] = useState(false);
 
   const {
     filtros,
@@ -79,6 +81,11 @@ export default function Extratos() {
   const handleDownload = (extrato: ExtratoItem) => {
     setSelectedExtrato(extrato);
     setShowDownload(true);
+  };
+
+  const handleDelete = (extrato: ExtratoItem) => {
+    setSelectedExtrato(extrato);
+    setShowExcluir(true);
   };
 
   // Aplicar filtros aos extratos
@@ -193,7 +200,8 @@ export default function Extratos() {
       <Button 
         variant="ghost" 
         size="icon" 
-        className="h-8 w-8 text-destructive"
+        className="h-8 w-8 text-destructive hover:text-destructive"
+        onClick={() => handleDelete(item)}
         title="Excluir extrato"
       >
         <Trash2 className="w-4 h-4" />
@@ -357,6 +365,13 @@ export default function Extratos() {
         extrato={selectedExtrato}
         open={showDownload}
         onOpenChange={setShowDownload}
+      />
+
+      {/* Dialog de Exclusão */}
+      <ExcluirExtratoDialog
+        extrato={selectedExtrato}
+        open={showExcluir}
+        onOpenChange={setShowExcluir}
       />
     </MainLayout>
   );
