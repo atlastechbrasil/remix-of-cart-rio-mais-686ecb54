@@ -148,21 +148,17 @@ export default function Auth() {
                 <FormField
                   control={forgotPasswordForm.control}
                   name="email"
-                  render={({ field: { onChange, onBlur, value, name, ref } }) => (
+                  render={({ field, fieldState }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="seu@email.com"
-                          autoComplete="email"
-                          name={name}
-                          ref={ref}
-                          value={value}
-                          onChange={onChange}
-                          onBlur={onBlur}
-                        />
-                      </FormControl>
+                      <FormLabel htmlFor="forgot-email">Email</FormLabel>
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="seu@email.com"
+                        autoComplete="email"
+                        aria-invalid={!!fieldState.error}
+                        {...field}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
