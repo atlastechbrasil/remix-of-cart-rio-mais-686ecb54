@@ -49,6 +49,9 @@ import { ListaConciliados } from "@/components/conciliacao/ListaConciliados";
 import { ListaDivergencias } from "@/components/conciliacao/ListaDivergencias";
 import { DetalhesConciliacaoDialog } from "@/components/conciliacao/DetalhesConciliacaoDialog";
 import { EditarConciliacaoDialog } from "@/components/conciliacao/EditarConciliacaoDialog";
+import { ResumoDiaConciliacao } from "@/components/conciliacao/ResumoDiaConciliacao";
+import { FechamentoDiaDialog } from "@/components/conciliacao/FechamentoDiaDialog";
+import { HistoricoConciliacoes } from "@/components/conciliacao/HistoricoConciliacoes";
 import { useDesvincularConciliacao } from "@/hooks/useConciliacao";
 import type { PresetPeriodo, ConciliacaoTabValue, ConciliacaoDetalhada } from "@/types/conciliacao";
 
@@ -70,7 +73,7 @@ export default function Conciliacao() {
   // Dialog states
   const [detailsConciliacao, setDetailsConciliacao] = useState<ConciliacaoDetalhada | null>(null);
   const [editConciliacao, setEditConciliacao] = useState<ConciliacaoDetalhada | null>(null);
-  const [confirmDesvincular, setConfirmDesvincular] = useState<ConciliacaoDetalhada | null>(null);
+  const [showFechamentoDialog, setShowFechamentoDialog] = useState(false);
   
   const desvincular = useDesvincularConciliacao();
 
@@ -174,6 +177,15 @@ export default function Conciliacao() {
         lancamentoId: detailsConciliacao.lancamento_id,
       });
     }
+  };
+
+  const handleFechamento = () => {
+    setShowFechamentoDialog(true);
+  };
+
+  const handleConfirmFechamento = () => {
+    // TODO: Implement fechamento logic (mark day as closed in database)
+    setShowFechamentoDialog(false);
   };
 
   const isLoading = loadingContas;
@@ -300,7 +312,19 @@ export default function Conciliacao() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            {/* Resumo do Dia - Sidebar */}
+            <div className="lg:col-span-1 order-2 lg:order-1">
+              <ResumoDiaConciliacao
+                data={dataSelecionada}
+                stats={stats}
+                onFechamento={handleFechamento}
+              />
+            </div>
+
+            {/* Main Content */}
+            <div className="lg:col-span-3 order-1 lg:order-2">
+              <Card className="h-full">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="text-lg">Conciliação do Dia</CardTitle>
@@ -445,14 +469,13 @@ export default function Conciliacao() {
 
                 {/* Tab: Histórico */}
                 <ConciliacaoTabsContent value="historico" className="mt-4">
-                  <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-sm">Histórico completo de conciliações.</p>
-                    <p className="text-xs mt-1">Use os filtros avançados para consultar períodos anteriores.</p>
-                  </div>
+                  <HistoricoConciliacoes onViewDetails={handleViewDetails} />
                 </ConciliacaoTabsContent>
               </ConciliacaoTabs>
             </CardContent>
           </Card>
+            </div>
+          </div>
         )}
       </div>
 
@@ -469,6 +492,15 @@ export default function Conciliacao() {
         conciliacao={editConciliacao}
         open={!!editConciliacao}
         onOpenChange={(open) => !open && setEditConciliacao(null)}
+      />
+
+      <FechamentoDiaDialog
+        open={showFechamentoDialog}
+        onOpenChange={setShowFechamentoDialog}
+        data={dataSelecionada}
+        stats={stats}
+        conciliacoes={conciliacoes || []}
+        onConfirm={handleConfirmFechamento}
       />
     </MainLayout>
   );
