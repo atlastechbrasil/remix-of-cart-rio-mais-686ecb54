@@ -471,7 +471,8 @@ export function useUpdateProfile() {
         .update(updates)
         .eq("user_id", userId)
         .select()
-        .single();
+        .maybeSingle();
+
 
       if (error) throw error;
       return data;
