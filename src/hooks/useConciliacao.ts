@@ -493,10 +493,16 @@ export function useVincularConciliacao() {
       return { success: true };
     },
     onSuccess: () => {
+      // Invalidate all related queries including date-specific ones
       queryClient.invalidateQueries({ queryKey: ["conciliacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes-data"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes-stats"] });
       queryClient.invalidateQueries({ queryKey: ["extrato-itens"] });
       queryClient.invalidateQueries({ queryKey: ["extrato-itens-conta"] });
+      queryClient.invalidateQueries({ queryKey: ["extrato-itens-data"] });
       queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["lancamentos-data"] });
+      queryClient.invalidateQueries({ queryKey: ["pendentes-count"] });
       toast.success("Itens conciliados com sucesso!");
     },
     onError: (error) => {
@@ -550,10 +556,16 @@ export function useDesvincularConciliacao() {
       return { success: true };
     },
     onSuccess: () => {
+      // Invalidate all related queries including date-specific ones
       queryClient.invalidateQueries({ queryKey: ["conciliacoes"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes-data"] });
+      queryClient.invalidateQueries({ queryKey: ["conciliacoes-stats"] });
       queryClient.invalidateQueries({ queryKey: ["extrato-itens"] });
       queryClient.invalidateQueries({ queryKey: ["extrato-itens-conta"] });
+      queryClient.invalidateQueries({ queryKey: ["extrato-itens-data"] });
       queryClient.invalidateQueries({ queryKey: ["lancamentos"] });
+      queryClient.invalidateQueries({ queryKey: ["lancamentos-data"] });
+      queryClient.invalidateQueries({ queryKey: ["pendentes-count"] });
       toast.success("Conciliação desfeita!");
     },
     onError: (error) => {
