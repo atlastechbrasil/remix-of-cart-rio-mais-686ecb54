@@ -90,26 +90,26 @@ Implementar funcionalidades completas para gerenciamento de extratos bancários:
 
 ---
 
-## Fase 5: Melhorias Adicionais
+## Fase 5: Melhorias Adicionais ✅
 
 ### 5.1 Ordenação da Tabela
-- [ ] Ordenar por data de importação (padrão: mais recente)
-- [ ] Ordenar por nome do arquivo
-- [ ] Ordenar por quantidade de lançamentos
-- [ ] Ordenar por status
+- [x] Ordenar por data de importação (padrão: mais recente)
+- [x] Ordenar por nome do arquivo
+- [x] Ordenar por quantidade de lançamentos
+- [x] Ordenar por status
 
 ### 5.2 Paginação
-- [ ] Adicionar paginação para listas grandes
-- [ ] Configuração de itens por página (10, 25, 50)
+- [x] Adicionar paginação para listas grandes
+- [x] Configuração de itens por página (10, 25, 50)
 
 ### 5.3 Busca Rápida
-- [ ] Campo de busca por nome de arquivo
-- [ ] Busca em tempo real com debounce
+- [x] Campo de busca por nome de arquivo (implementado na Fase 1)
+- [x] Busca em tempo real com debounce
 
 ### 5.4 Ações em Lote
-- [ ] Seleção múltipla de extratos
-- [ ] Excluir vários extratos de uma vez
-- [ ] Download em lote (ZIP com múltiplos arquivos)
+- [x] Seleção múltipla de extratos
+- [x] Excluir vários extratos de uma vez
+- [ ] Download em lote (ZIP com múltiplos arquivos) - pendente
 
 ---
 
