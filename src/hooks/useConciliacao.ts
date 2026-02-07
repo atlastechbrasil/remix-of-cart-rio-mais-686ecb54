@@ -456,7 +456,19 @@ export function useVincularConciliacao() {
       diferenca?: number;
       observacao?: string;
     }) => {
-      // Criar registro de conciliação com cartorio_id
+      // First, delete any existing conciliacao for this extrato_item to avoid duplicates
+      await supabase
+        .from("conciliacoes")
+        .delete()
+        .eq("extrato_item_id", extratoItemId);
+
+      // Also delete any existing conciliacao for this lancamento
+      await supabase
+        .from("conciliacoes")
+        .delete()
+        .eq("lancamento_id", lancamentoId);
+
+      // Now create the new conciliacao record
       const { error: conciliacaoError } = await supabase
         .from("conciliacoes")
         .insert({
