@@ -495,6 +495,13 @@ export type Database = {
     }
     Functions: {
       get_user_cartorios: { Args: { _user_id: string }; Returns: string[] }
+      get_user_emails: {
+        Args: { user_ids: string[] }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
