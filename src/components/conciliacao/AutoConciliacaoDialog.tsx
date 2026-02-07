@@ -60,31 +60,35 @@ function MatchListItem({ extratoItem, lancamento, onRemove }: MatchListItemProps
   return (
     <div className="p-3 border rounded-lg bg-muted/30">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0 space-y-2">
+        <div className="flex-1 min-w-0 space-y-3">
           {/* Extrato */}
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs shrink-0">
-              Extrato
-            </Badge>
-            <span className="text-sm truncate">{extratoItem.descricao}</span>
-            <span
-              className={`text-sm font-medium shrink-0 ${
-                extratoItem.tipo === "credito" ? "text-success" : "text-destructive"
-              }`}
-            >
-              {formatCurrency(Math.abs(extratoItem.valor))}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="outline" className="text-xs shrink-0">
+                Extrato
+              </Badge>
+              <span
+                className={`text-sm font-medium shrink-0 ${
+                  extratoItem.tipo === "credito" ? "text-success" : "text-destructive"
+                }`}
+              >
+                {formatCurrency(Math.abs(extratoItem.valor))}
+              </span>
+            </div>
+            <p className="text-sm break-words leading-snug">{extratoItem.descricao}</p>
           </div>
 
           {/* Lançamento */}
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs shrink-0">
-              Sistema
-            </Badge>
-            <span className="text-sm truncate">{lancamento.descricao}</span>
-            <span className="text-sm font-medium shrink-0 text-primary">
-              {formatCurrency(lancamento.valor)}
-            </span>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <Badge variant="outline" className="text-xs shrink-0">
+                Sistema
+              </Badge>
+              <span className="text-sm font-medium shrink-0 text-primary">
+                {formatCurrency(lancamento.valor)}
+              </span>
+            </div>
+            <p className="text-sm break-words leading-snug">{lancamento.descricao}</p>
           </div>
 
           <div className="text-xs text-muted-foreground">
