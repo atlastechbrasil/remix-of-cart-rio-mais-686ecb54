@@ -131,6 +131,22 @@ export function useAllUsuarios() {
 
       if (profilesError) throw profilesError;
 
+      // Buscar emails dos usuários via função security definer
+      const { data: emailsData, error: emailsError } = await supabase
+        .rpc("get_user_emails", { user_ids: userIds });
+
+      if (emailsError) {
+        console.warn("Erro ao buscar emails:", emailsError.message);
+      }
+
+      // Mapear emails por user_id
+      const emailsMap = new Map<string, string>();
+      if (emailsData) {
+        for (const item of emailsData) {
+          emailsMap.set(item.user_id, item.email);
+        }
+      }
+
       // Buscar nomes dos cartórios
       const cartorioIds = [...new Set(vinculos.map((v) => v.cartorio_id))];
 
@@ -152,7 +168,7 @@ export function useAllUsuarios() {
           usuariosMap.set(vinculo.user_id, {
             user_id: vinculo.user_id,
             nome: profile?.nome || null,
-            email: "",
+            email: emailsMap.get(vinculo.user_id) || "",
             avatar_url: profile?.avatar_url || null,
             cargo: profile?.cargo || null,
             created_at: profile?.created_at || vinculo.created_at,
