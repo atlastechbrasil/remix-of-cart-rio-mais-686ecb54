@@ -39,11 +39,15 @@ import {
   useLancamentosByDate,
   useConciliacaoStatsByDate,
   usePendentesCountByDate,
+  useConciliacoesByDate,
 } from "@/hooks/useConciliacaoAdvanced";
 import { ExtratoList } from "@/components/conciliacao/ExtratoList";
 import { LancamentoList } from "@/components/conciliacao/LancamentoList";
 import { FiltroDataConciliacao } from "@/components/conciliacao/FiltroDataConciliacao";
-import type { PresetPeriodo } from "@/types/conciliacao";
+import { ConciliacaoTabs, TabsContent as ConciliacaoTabsContent } from "@/components/conciliacao/ConciliacaoTabs";
+import { ListaConciliados } from "@/components/conciliacao/ListaConciliados";
+import { ListaDivergencias } from "@/components/conciliacao/ListaDivergencias";
+import type { PresetPeriodo, ConciliacaoTabValue, ConciliacaoDetalhada } from "@/types/conciliacao";
 
 export default function Conciliacao() {
   const isMobile = useIsMobile();
@@ -52,11 +56,12 @@ export default function Conciliacao() {
 
   // State
   const [selectedContaId, setSelectedContaId] = useState<string | undefined>();
-  const [dataSelecionada, setDataSelecionada] = useState<Date>(subDays(new Date(), 1)); // Default: yesterday
+  const [dataSelecionada, setDataSelecionada] = useState<Date>(subDays(new Date(), 1));
   const [presetPeriodo, setPresetPeriodo] = useState<PresetPeriodo>("ontem");
   const [selectedExtrato, setSelectedExtrato] = useState<string | null>(null);
   const [selectedLancamento, setSelectedLancamento] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<string>("extrato");
+  const [mainTab, setMainTab] = useState<ConciliacaoTabValue>("pendentes");
   const [searchTerm, setSearchTerm] = useState("");
 
   // Data hooks with date filter
@@ -67,11 +72,27 @@ export default function Conciliacao() {
   const { data: lancamentos, isLoading: loadingLancamentos } = useLancamentosByDate(
     dataSelecionada
   );
+  const { data: conciliacoes, isLoading: loadingConciliacoes } = useConciliacoesByDate(
+    dataSelecionada
+  );
   
   const stats = useConciliacaoStatsByDate(selectedContaId, dataSelecionada);
   const pendentesCount = usePendentesCountByDate(selectedContaId, dataSelecionada);
 
   const contaAtiva = contas?.find((c) => c.id === selectedContaId);
+
+  // Filter conciliations by status
+  const conciliadosList = useMemo(() => {
+    return (conciliacoes || []).filter(
+      (c) => c.extrato_item?.status_conciliacao === "conciliado" && Number(c.diferenca || 0) === 0
+    );
+  }, [conciliacoes]);
+
+  const divergentesList = useMemo(() => {
+    return (conciliacoes || []).filter(
+      (c) => c.extrato_item?.status_conciliacao === "divergente" || Number(c.diferenca || 0) !== 0
+    );
+  }, [conciliacoes]);
 
   // Filter items by search term
   const filteredExtratoItens = useMemo(() => {
@@ -97,7 +118,6 @@ export default function Conciliacao() {
     );
   }, [lancamentos, searchTerm]);
 
-  // Filter for pending only in the matching panel
   const lancamentosPendentes = useMemo(() => {
     return filteredLancamentos.filter((l) => l.status_conciliacao === "pendente");
   }, [filteredLancamentos]);
@@ -127,6 +147,11 @@ export default function Conciliacao() {
     }
   };
 
+  const handleViewDetails = (conciliacao: ConciliacaoDetalhada) => {
+    // TODO: Open details dialog
+    console.log("View details:", conciliacao);
+  };
+
   const isLoading = loadingContas;
 
   if (isLoading) {
@@ -146,7 +171,6 @@ export default function Conciliacao() {
         description="Fechamento diário - Compare extratos bancários com lançamentos do sistema"
       >
         <div className="flex flex-col gap-3">
-          {/* Account Selector */}
           <Select value={selectedContaId} onValueChange={setSelectedContaId}>
             <SelectTrigger className="w-full sm:w-56">
               <SelectValue placeholder="Selecione uma conta" />
@@ -182,9 +206,9 @@ export default function Conciliacao() {
           </CardContent>
         </Card>
 
-        {/* KPIs de Conciliação */}
+        {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMainTab("conciliados")}>
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="p-1.5 sm:p-2 rounded-lg bg-success/10">
@@ -198,7 +222,7 @@ export default function Conciliacao() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMainTab("pendentes")}>
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="p-1.5 sm:p-2 rounded-lg bg-warning/10">
@@ -212,7 +236,7 @@ export default function Conciliacao() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setMainTab("divergentes")}>
             <CardContent className="p-3 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="p-1.5 sm:p-2 rounded-lg bg-destructive/10">
@@ -252,64 +276,106 @@ export default function Conciliacao() {
             </CardContent>
           </Card>
         ) : (
-          /* Painel de Conciliação */
           <Card className="flex-1">
             <CardHeader className="pb-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <CardTitle className="text-lg">Comparativo de Lançamentos</CardTitle>
-                <div className="flex items-center gap-2">
-                  {/* Search */}
-                  <div className="relative flex-1 sm:w-48">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-8 h-9"
-                    />
+                <CardTitle className="text-lg">Conciliação do Dia</CardTitle>
+                {mainTab === "pendentes" && (
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 sm:w-48">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8 h-9"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" className="hidden sm:flex">
+                      <Filter className="w-4 h-4 mr-2" />
+                      Filtros
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
+                      onClick={handleVincular}
+                      className="flex-shrink-0"
+                    >
+                      {vincular.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Link2 className="w-4 h-4 mr-2" />
+                      )}
+                      <span className="hidden sm:inline">Vincular</span>
+                      <span className="sm:hidden">OK</span>
+                    </Button>
                   </div>
-                  <Button variant="outline" size="sm" className="hidden sm:flex">
-                    <Filter className="w-4 h-4 mr-2" />
-                    Filtros
-                  </Button>
-                  <Button
-                    size="sm"
-                    disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
-                    onClick={handleVincular}
-                    className="flex-shrink-0"
-                  >
-                    {vincular.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Link2 className="w-4 h-4 mr-2" />
-                    )}
-                    <span className="hidden sm:inline">Vincular</span>
-                    <span className="sm:hidden">OK</span>
-                  </Button>
-                </div>
+                )}
               </div>
             </CardHeader>
             <CardContent>
-              {/* Mobile: Tabs */}
-              {isMobile ? (
-                <div className="space-y-4">
-                  <Tabs value={mobileTab} onValueChange={setMobileTab}>
-                    <TabsList className="w-full grid grid-cols-2">
-                      <TabsTrigger value="extrato" className="relative">
-                        Extrato
-                        {selectedExtrato && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-                        )}
-                      </TabsTrigger>
-                      <TabsTrigger value="lancamentos" className="relative">
-                        Lançamentos
-                        {selectedLancamento && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-                        )}
-                      </TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="extrato" className="mt-4">
-                      <div className="border rounded-lg h-[400px]">
+              <ConciliacaoTabs value={mainTab} onValueChange={setMainTab} stats={stats}>
+                {/* Tab: Pendentes */}
+                <ConciliacaoTabsContent value="pendentes" className="mt-4">
+                  {isMobile ? (
+                    <div className="space-y-4">
+                      <Tabs value={mobileTab} onValueChange={setMobileTab}>
+                        <TabsList className="w-full grid grid-cols-2">
+                          <TabsTrigger value="extrato" className="relative">
+                            Extrato
+                            {selectedExtrato && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                            )}
+                          </TabsTrigger>
+                          <TabsTrigger value="lancamentos" className="relative">
+                            Lançamentos
+                            {selectedLancamento && (
+                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
+                            )}
+                          </TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="extrato" className="mt-4">
+                          <div className="border rounded-lg h-[400px]">
+                            <ExtratoList
+                              items={filteredExtratoItens}
+                              selectedId={selectedExtrato}
+                              onSelect={setSelectedExtrato}
+                              isLoading={loadingExtrato}
+                              contaInfo={contaAtiva ? {
+                                banco: contaAtiva.banco,
+                                agencia: contaAtiva.agencia,
+                                conta: contaAtiva.conta,
+                              } : undefined}
+                            />
+                          </div>
+                        </TabsContent>
+                        <TabsContent value="lancamentos" className="mt-4">
+                          <div className="border rounded-lg h-[400px]">
+                            <LancamentoList
+                              items={lancamentosPendentes}
+                              selectedId={selectedLancamento}
+                              onSelect={setSelectedLancamento}
+                              isLoading={loadingLancamentos}
+                            />
+                          </div>
+                        </TabsContent>
+                      </Tabs>
+
+                      {(selectedExtrato || selectedLancamento) && (
+                        <div className="p-3 bg-muted/50 rounded-lg text-sm">
+                          <p className="text-muted-foreground">
+                            {selectedExtrato && selectedLancamento
+                              ? "✓ Ambos selecionados - clique em Vincular"
+                              : selectedExtrato
+                              ? "Extrato selecionado - selecione um lançamento"
+                              : "Lançamento selecionado - selecione um extrato"}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <ResizablePanelGroup direction="horizontal" className="min-h-[450px] rounded-lg border">
+                      <ResizablePanel defaultSize={50} minSize={30}>
                         <ExtratoList
                           items={filteredExtratoItens}
                           selectedId={selectedExtrato}
@@ -321,62 +387,46 @@ export default function Conciliacao() {
                             conta: contaAtiva.conta,
                           } : undefined}
                         />
-                      </div>
-                    </TabsContent>
-                    <TabsContent value="lancamentos" className="mt-4">
-                      <div className="border rounded-lg h-[400px]">
+                      </ResizablePanel>
+                      <ResizableHandle withHandle />
+                      <ResizablePanel defaultSize={50} minSize={30}>
                         <LancamentoList
                           items={lancamentosPendentes}
                           selectedId={selectedLancamento}
                           onSelect={setSelectedLancamento}
                           isLoading={loadingLancamentos}
                         />
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-
-                  {/* Selection summary */}
-                  {(selectedExtrato || selectedLancamento) && (
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm">
-                      <p className="text-muted-foreground">
-                        {selectedExtrato && selectedLancamento
-                          ? "✓ Ambos selecionados - clique em Vincular"
-                          : selectedExtrato
-                          ? "Extrato selecionado - selecione um lançamento"
-                          : "Lançamento selecionado - selecione um extrato"}
-                      </p>
-                    </div>
+                      </ResizablePanel>
+                    </ResizablePanelGroup>
                   )}
-                </div>
-              ) : (
-                /* Desktop: Resizable panels */
-                <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
-                  <ResizablePanel defaultSize={50} minSize={30}>
-                    <ExtratoList
-                      items={filteredExtratoItens}
-                      selectedId={selectedExtrato}
-                      onSelect={setSelectedExtrato}
-                      isLoading={loadingExtrato}
-                      contaInfo={contaAtiva ? {
-                        banco: contaAtiva.banco,
-                        agencia: contaAtiva.agencia,
-                        conta: contaAtiva.conta,
-                      } : undefined}
-                    />
-                  </ResizablePanel>
+                </ConciliacaoTabsContent>
 
-                  <ResizableHandle withHandle />
+                {/* Tab: Conciliados */}
+                <ConciliacaoTabsContent value="conciliados" className="mt-4">
+                  <ListaConciliados
+                    conciliacoes={conciliadosList}
+                    isLoading={loadingConciliacoes}
+                    onViewDetails={handleViewDetails}
+                  />
+                </ConciliacaoTabsContent>
 
-                  <ResizablePanel defaultSize={50} minSize={30}>
-                    <LancamentoList
-                      items={lancamentosPendentes}
-                      selectedId={selectedLancamento}
-                      onSelect={setSelectedLancamento}
-                      isLoading={loadingLancamentos}
-                    />
-                  </ResizablePanel>
-                </ResizablePanelGroup>
-              )}
+                {/* Tab: Divergentes */}
+                <ConciliacaoTabsContent value="divergentes" className="mt-4">
+                  <ListaDivergencias
+                    conciliacoes={divergentesList}
+                    isLoading={loadingConciliacoes}
+                    onViewDetails={handleViewDetails}
+                  />
+                </ConciliacaoTabsContent>
+
+                {/* Tab: Histórico */}
+                <ConciliacaoTabsContent value="historico" className="mt-4">
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p className="text-sm">Histórico completo de conciliações.</p>
+                    <p className="text-xs mt-1">Use os filtros avançados para consultar períodos anteriores.</p>
+                  </div>
+                </ConciliacaoTabsContent>
+              </ConciliacaoTabs>
             </CardContent>
           </Card>
         )}
