@@ -388,7 +388,7 @@ export type Database = {
       }
       perfis_acesso: {
         Row: {
-          cartorio_id: string
+          cartorio_id: string | null
           cor: string | null
           created_at: string
           descricao: string | null
@@ -398,7 +398,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          cartorio_id: string
+          cartorio_id?: string | null
           cor?: string | null
           created_at?: string
           descricao?: string | null
@@ -408,7 +408,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          cartorio_id?: string
+          cartorio_id?: string | null
           cor?: string | null
           created_at?: string
           descricao?: string | null
