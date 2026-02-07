@@ -1,20 +1,21 @@
 import { useState, useMemo } from "react";
+import { subDays } from "date-fns";
 import {
   CheckCircle2,
   AlertTriangle,
   Clock,
   ArrowRightLeft,
   Filter,
-  Calendar,
   RefreshCw,
   Link2,
   Loader2,
+  Search,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -27,252 +28,79 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useContasBancarias,
-  useExtratoItensByConta,
-  useLancamentos,
   useVincularConciliacao,
-  useDesvincularConciliacao,
-  ExtratoItem,
-  Lancamento,
 } from "@/hooks/useConciliacao";
-import { format, parseISO } from "date-fns";
-
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(Math.abs(value));
-};
-
-const statusStyles = {
-  conciliado: "conciliado",
-  pendente: "pendente",
-  divergente: "divergente",
-};
-
-const statusLabels = {
-  conciliado: "Conciliado",
-  pendente: "Pendente",
-  divergente: "Divergente",
-};
-
-// Componente de item reutilizável para extrato e lançamento
-interface ItemCardProps {
-  id: string;
-  descricao: string;
-  data: string;
-  valor: number;
-  tipo: "credito" | "debito" | "receita" | "despesa";
-  status: string;
-  categoria?: string | null;
-  isSelected: boolean;
-  isSelectable: boolean;
-  onSelect: () => void;
-}
-
-function ItemCard({
-  descricao,
-  data,
-  valor,
-  tipo,
-  status,
-  categoria,
-  isSelected,
-  isSelectable,
-  onSelect,
-}: ItemCardProps) {
-  const isPositive = tipo === "credito" || tipo === "receita";
-
-  return (
-    <div
-      onClick={() => isSelectable && onSelect()}
-      className={cn(
-        "p-3 rounded-lg border transition-all",
-        isSelectable ? "cursor-pointer" : "cursor-default opacity-60",
-        isSelected
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
-          : isSelectable
-          ? "hover:bg-muted/50"
-          : ""
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{descricao}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {format(parseISO(data), "dd/MM/yyyy")}
-            {categoria && ` • ${categoria}`}
-          </p>
-        </div>
-        <div className="text-right">
-          <p
-            className={cn(
-              "text-sm font-semibold",
-              isPositive ? "text-success" : "text-destructive"
-            )}
-          >
-            {isPositive ? "+" : "-"}
-            {formatCurrency(valor)}
-          </p>
-          <Badge
-            variant="outline"
-            className={cn("text-xs mt-1", statusStyles[status as keyof typeof statusStyles])}
-          >
-            {statusLabels[status as keyof typeof statusLabels]}
-          </Badge>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Lista de extratos
-interface ExtratoListProps {
-  items: ExtratoItem[];
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-  isLoading: boolean;
-  contaInfo?: { banco: string; agencia: string; conta: string };
-}
-
-function ExtratoList({ items, selectedId, onSelect, isLoading, contaInfo }: ExtratoListProps) {
-  return (
-    <div className="h-full flex flex-col">
-      <div className="p-3 border-b bg-muted/30">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-secondary" />
-          Extrato Bancário
-        </h3>
-        {contaInfo && (
-          <p className="text-xs text-muted-foreground mt-1">
-            {contaInfo.banco} - Ag: {contaInfo.agencia} / CC: {contaInfo.conta}
-          </p>
-        )}
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : items.length > 0 ? (
-            items.map((item) => (
-              <div key={item.id}>
-                <ItemCard
-                  id={item.id}
-                  descricao={item.descricao}
-                  data={item.data_transacao}
-                  valor={Number(item.valor)}
-                  tipo={item.tipo as "credito" | "debito" | "receita" | "despesa"}
-                  status={item.status_conciliacao}
-                  isSelected={selectedId === item.id}
-                  isSelectable={item.status_conciliacao === "pendente"}
-                  onSelect={() => onSelect(selectedId === item.id ? null : item.id)}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Nenhum item de extrato encontrado.</p>
-              <p className="text-xs mt-1">Importe um extrato para esta conta.</p>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
-  );
-}
-
-// Lista de lançamentos
-interface LancamentoListProps {
-  items: Lancamento[];
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
-}
-
-function LancamentoList({ items, selectedId, onSelect }: LancamentoListProps) {
-  return (
-    <div className="h-full flex flex-col">
-      <div className="p-3 border-b bg-muted/30">
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-primary" />
-          Lançamentos do Sistema
-        </h3>
-        <p className="text-xs text-muted-foreground mt-1">
-          {items.length} lançamentos pendentes
-        </p>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="p-2 space-y-1">
-          {items.length > 0 ? (
-            items.map((item) => (
-              <div key={item.id}>
-                <ItemCard
-                  id={item.id}
-                  descricao={item.descricao}
-                  data={item.data}
-                  valor={Number(item.valor)}
-                  tipo={item.tipo as "credito" | "debito" | "receita" | "despesa"}
-                  status={item.status_conciliacao}
-                  categoria={item.categoria}
-                  isSelected={selectedId === item.id}
-                  isSelectable={true}
-                  onSelect={() => onSelect(selectedId === item.id ? null : item.id)}
-                />
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <p className="text-sm">Nenhum lançamento pendente.</p>
-              <p className="text-xs mt-1">Todos os lançamentos foram conciliados.</p>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
-    </div>
-  );
-}
+import {
+  useExtratoItensByDate,
+  useLancamentosByDate,
+  useConciliacaoStatsByDate,
+  usePendentesCountByDate,
+} from "@/hooks/useConciliacaoAdvanced";
+import { ExtratoList } from "@/components/conciliacao/ExtratoList";
+import { LancamentoList } from "@/components/conciliacao/LancamentoList";
+import { FiltroDataConciliacao } from "@/components/conciliacao/FiltroDataConciliacao";
+import type { PresetPeriodo } from "@/types/conciliacao";
 
 export default function Conciliacao() {
   const isMobile = useIsMobile();
   const { data: contas, isLoading: loadingContas } = useContasBancarias();
-  const { data: lancamentos, isLoading: loadingLancamentos } = useLancamentos();
   const vincular = useVincularConciliacao();
 
+  // State
   const [selectedContaId, setSelectedContaId] = useState<string | undefined>();
+  const [dataSelecionada, setDataSelecionada] = useState<Date>(subDays(new Date(), 1)); // Default: yesterday
+  const [presetPeriodo, setPresetPeriodo] = useState<PresetPeriodo>("ontem");
   const [selectedExtrato, setSelectedExtrato] = useState<string | null>(null);
   const [selectedLancamento, setSelectedLancamento] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<string>("extrato");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const { data: extratoItens, isLoading: loadingExtrato } = useExtratoItensByConta(selectedContaId);
+  // Data hooks with date filter
+  const { data: extratoItens, isLoading: loadingExtrato } = useExtratoItensByDate(
+    selectedContaId,
+    dataSelecionada
+  );
+  const { data: lancamentos, isLoading: loadingLancamentos } = useLancamentosByDate(
+    dataSelecionada
+  );
+  
+  const stats = useConciliacaoStatsByDate(selectedContaId, dataSelecionada);
+  const pendentesCount = usePendentesCountByDate(selectedContaId, dataSelecionada);
 
   const contaAtiva = contas?.find((c) => c.id === selectedContaId);
 
-  // Calcular estatísticas
-  const stats = useMemo(() => {
-    const itens = extratoItens || [];
-    const conciliados = itens.filter((i) => i.status_conciliacao === "conciliado").length;
-    const pendentes = itens.filter((i) => i.status_conciliacao === "pendente").length;
-    const divergentes = itens.filter((i) => i.status_conciliacao === "divergente").length;
-    const total = itens.length;
+  // Filter items by search term
+  const filteredExtratoItens = useMemo(() => {
+    if (!extratoItens) return [];
+    if (!searchTerm) return extratoItens;
+    const term = searchTerm.toLowerCase();
+    return extratoItens.filter(
+      (item) =>
+        item.descricao.toLowerCase().includes(term) ||
+        String(item.valor).includes(term)
+    );
+  }, [extratoItens, searchTerm]);
 
-    return {
-      conciliados,
-      pendentes,
-      divergentes,
-      taxaConciliacao: total > 0 ? Math.round((conciliados / total) * 100) : 0,
-    };
-  }, [extratoItens]);
+  const filteredLancamentos = useMemo(() => {
+    if (!lancamentos) return [];
+    if (!searchTerm) return lancamentos;
+    const term = searchTerm.toLowerCase();
+    return lancamentos.filter(
+      (item) =>
+        item.descricao.toLowerCase().includes(term) ||
+        item.categoria?.toLowerCase().includes(term) ||
+        String(item.valor).includes(term)
+    );
+  }, [lancamentos, searchTerm]);
 
-  // Filtrar lançamentos pendentes
+  // Filter for pending only in the matching panel
   const lancamentosPendentes = useMemo(() => {
-    return (lancamentos || []).filter((l) => l.status_conciliacao === "pendente");
-  }, [lancamentos]);
+    return filteredLancamentos.filter((l) => l.status_conciliacao === "pendente");
+  }, [filteredLancamentos]);
 
   const handleVincular = () => {
     if (selectedExtrato && selectedLancamento) {
@@ -299,7 +127,7 @@ export default function Conciliacao() {
     }
   };
 
-  const isLoading = loadingContas || loadingLancamentos;
+  const isLoading = loadingContas;
 
   if (isLoading) {
     return (
@@ -315,9 +143,10 @@ export default function Conciliacao() {
     <MainLayout>
       <PageHeader
         title="Conciliação Bancária"
-        description="Compare extratos bancários com lançamentos do sistema"
+        description="Fechamento diário - Compare extratos bancários com lançamentos do sistema"
       >
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex flex-col gap-3">
+          {/* Account Selector */}
           <Select value={selectedContaId} onValueChange={setSelectedContaId}>
             <SelectTrigger className="w-full sm:w-56">
               <SelectValue placeholder="Selecione uma conta" />
@@ -330,20 +159,29 @@ export default function Conciliacao() {
               ))}
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="flex-1 sm:flex-none">
-              <Calendar className="w-4 h-4 mr-2" />
-              <span className="sm:inline">Período</span>
-            </Button>
-            <Button className="flex-1 sm:flex-none">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              <span className="sm:inline">Atualizar</span>
-            </Button>
-          </div>
         </div>
       </PageHeader>
 
       <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
+        {/* Date Filter */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <FiltroDataConciliacao
+                dataSelecionada={dataSelecionada}
+                onDataChange={setDataSelecionada}
+                preset={presetPeriodo}
+                onPresetChange={setPresetPeriodo}
+                pendentesCount={pendentesCount}
+              />
+              <Button variant="outline" size="sm" className="self-start">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Atualizar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* KPIs de Conciliação */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card>
@@ -420,7 +258,17 @@ export default function Conciliacao() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="text-lg">Comparativo de Lançamentos</CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none">
+                  {/* Search */}
+                  <div className="relative flex-1 sm:w-48">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-8 h-9"
+                    />
+                  </div>
+                  <Button variant="outline" size="sm" className="hidden sm:flex">
                     <Filter className="w-4 h-4 mr-2" />
                     Filtros
                   </Button>
@@ -428,15 +276,15 @@ export default function Conciliacao() {
                     size="sm"
                     disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
                     onClick={handleVincular}
-                    className="flex-1 sm:flex-none"
+                    className="flex-shrink-0"
                   >
                     {vincular.isPending ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
                       <Link2 className="w-4 h-4 mr-2" />
                     )}
-                    <span className="hidden sm:inline">Vincular Selecionados</span>
-                    <span className="sm:hidden">Vincular</span>
+                    <span className="hidden sm:inline">Vincular</span>
+                    <span className="sm:hidden">OK</span>
                   </Button>
                 </div>
               </div>
@@ -463,7 +311,7 @@ export default function Conciliacao() {
                     <TabsContent value="extrato" className="mt-4">
                       <div className="border rounded-lg h-[400px]">
                         <ExtratoList
-                          items={extratoItens || []}
+                          items={filteredExtratoItens}
                           selectedId={selectedExtrato}
                           onSelect={setSelectedExtrato}
                           isLoading={loadingExtrato}
@@ -481,6 +329,7 @@ export default function Conciliacao() {
                           items={lancamentosPendentes}
                           selectedId={selectedLancamento}
                           onSelect={setSelectedLancamento}
+                          isLoading={loadingLancamentos}
                         />
                       </div>
                     </TabsContent>
@@ -504,7 +353,7 @@ export default function Conciliacao() {
                 <ResizablePanelGroup direction="horizontal" className="min-h-[500px] rounded-lg border">
                   <ResizablePanel defaultSize={50} minSize={30}>
                     <ExtratoList
-                      items={extratoItens || []}
+                      items={filteredExtratoItens}
                       selectedId={selectedExtrato}
                       onSelect={setSelectedExtrato}
                       isLoading={loadingExtrato}
@@ -523,6 +372,7 @@ export default function Conciliacao() {
                       items={lancamentosPendentes}
                       selectedId={selectedLancamento}
                       onSelect={setSelectedLancamento}
+                      isLoading={loadingLancamentos}
                     />
                   </ResizablePanel>
                 </ResizablePanelGroup>
