@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { subDays } from "date-fns";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { subDays, addDays } from "date-fns";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -11,6 +11,7 @@ import {
   Search,
   Sparkles,
   Lightbulb,
+  Keyboard,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -30,6 +31,12 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   useContasBancarias,
@@ -43,6 +50,7 @@ import {
   useConciliacoesByDate,
 } from "@/hooks/useConciliacaoAdvanced";
 import { useFiltrosConciliacao } from "@/hooks/useFiltrosConciliacao";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { ExtratoList } from "@/components/conciliacao/ExtratoList";
 import { LancamentoList } from "@/components/conciliacao/LancamentoList";
 import { FiltroDataConciliacao } from "@/components/conciliacao/FiltroDataConciliacao";
@@ -65,6 +73,7 @@ export default function Conciliacao() {
   const isMobile = useIsMobile();
   const { data: contas, isLoading: loadingContas } = useContasBancarias();
   const vincular = useVincularConciliacao();
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // State
   const [selectedContaId, setSelectedContaId] = useState<string | undefined>();
@@ -246,6 +255,41 @@ export default function Conciliacao() {
     }
   };
 
+  // Keyboard shortcuts handlers
+  const handleFocusSearch = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedExtrato(null);
+    setSelectedLancamento(null);
+    setSelectedExtratoItem(null);
+  }, []);
+
+  const handleNextDay = useCallback(() => {
+    setDataSelecionada((prev) => addDays(prev, 1));
+    setPresetPeriodo("customizado");
+  }, []);
+
+  const handlePrevDay = useCallback(() => {
+    setDataSelecionada((prev) => subDays(prev, 1));
+    setPresetPeriodo("customizado");
+  }, []);
+
+  // Register keyboard shortcuts
+  useKeyboardShortcuts({
+    onFocusSearch: handleFocusSearch,
+    onVincular: handleVincular,
+    onClearSelection: handleClearSelection,
+    onNextDay: handleNextDay,
+    onPrevDay: handlePrevDay,
+    onOpenSugestoes: () => setShowSugestoesDialog(true),
+    onOpenAutoMatch: () => setShowAutoDialog(true),
+    isVincularEnabled: !!(selectedExtrato && selectedLancamento && !vincular.isPending),
+    isSugestoesEnabled: !!selectedExtrato,
+    isAutoEnabled: stats.pendentes > 0,
+  });
+
   const isLoading = loadingContas;
 
   if (isLoading) {
@@ -391,7 +435,8 @@ export default function Conciliacao() {
                     <div className="relative flex-1 sm:w-40">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
-                        placeholder="Buscar..."
+                        ref={searchInputRef}
+                        placeholder="Buscar... (Ctrl+F)"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-8 h-9"
@@ -426,20 +471,51 @@ export default function Conciliacao() {
                         <span className="hidden sm:inline">Sugestões</span>
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
-                      onClick={handleVincular}
-                      className="flex-shrink-0"
-                    >
-                      {vincular.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Link2 className="w-4 h-4 mr-2" />
-                      )}
-                      <span className="hidden sm:inline">Vincular</span>
-                      <span className="sm:hidden">OK</span>
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
+                            onClick={handleVincular}
+                            className="flex-shrink-0"
+                          >
+                            {vincular.isPending ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                              <Link2 className="w-4 h-4 mr-2" />
+                            )}
+                            <span className="hidden sm:inline">Vincular</span>
+                            <span className="sm:hidden">OK</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p>Vincular itens selecionados <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-[10px]">Enter</kbd></p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {!isMobile && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="w-8 h-8">
+                              <Keyboard className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="text-left">
+                            <p className="font-semibold mb-1">Atalhos de Teclado</p>
+                            <div className="text-xs space-y-0.5">
+                              <p><kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+F</kbd> Buscar</p>
+                              <p><kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> Vincular</p>
+                              <p><kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> Limpar seleção</p>
+                              <p><kbd className="px-1 py-0.5 bg-muted rounded">←</kbd> <kbd className="px-1 py-0.5 bg-muted rounded">→</kbd> Navegar dias</p>
+                              <p><kbd className="px-1 py-0.5 bg-muted rounded">S</kbd> Sugestões</p>
+                              <p><kbd className="px-1 py-0.5 bg-muted rounded">A</kbd> Auto-match</p>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                 )}
               </div>

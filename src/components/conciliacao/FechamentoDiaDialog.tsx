@@ -8,6 +8,7 @@ import {
   Download,
   Printer,
   Loader2,
+  FileSpreadsheet,
 } from "lucide-react";
 import {
   Dialog,
@@ -31,6 +32,8 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { exportFechamentoPDF, exportFechamentoExcel } from "@/lib/conciliacao-export";
+import { toast } from "sonner";
 import type { ConciliacaoStats, ConciliacaoDetalhada } from "@/types/conciliacao";
 
 interface FechamentoDiaDialogProps {
@@ -56,6 +59,7 @@ function FechamentoContent({
   conciliacoes,
   onConfirm,
   onExportPDF,
+  onExportExcel,
   onPrint,
   isConfirming,
 }: {
@@ -64,6 +68,7 @@ function FechamentoContent({
   conciliacoes: ConciliacaoDetalhada[];
   onConfirm: () => void;
   onExportPDF?: () => void;
+  onExportExcel?: () => void;
   onPrint?: () => void;
   isConfirming?: boolean;
 }) {
@@ -173,13 +178,17 @@ function FechamentoContent({
         )}
 
         {/* Export Actions */}
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={onExportPDF}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar PDF
+        <div className="grid grid-cols-3 gap-2">
+          <Button variant="outline" size="sm" onClick={onExportPDF}>
+            <Download className="w-4 h-4 mr-1" />
+            PDF
           </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={onPrint}>
-            <Printer className="w-4 h-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={onExportExcel}>
+            <FileSpreadsheet className="w-4 h-4 mr-1" />
+            Excel
+          </Button>
+          <Button variant="outline" size="sm" onClick={onPrint}>
+            <Printer className="w-4 h-4 mr-1" />
             Imprimir
           </Button>
         </div>
@@ -223,8 +232,23 @@ export function FechamentoDiaDialog({
   const isMobile = useIsMobile();
 
   const handleExportPDF = () => {
-    // TODO: Implement PDF export
-    console.log("Export PDF");
+    try {
+      exportFechamentoPDF({ data, stats, conciliacoes });
+      toast.success("PDF exportado com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao exportar PDF");
+      console.error(error);
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      exportFechamentoExcel({ data, stats, conciliacoes });
+      toast.success("Excel exportado com sucesso!");
+    } catch (error) {
+      toast.error("Erro ao exportar Excel");
+      console.error(error);
+    }
   };
 
   const handlePrint = () => {
@@ -248,6 +272,7 @@ export function FechamentoDiaDialog({
               conciliacoes={conciliacoes}
               onConfirm={onConfirm}
               onExportPDF={handleExportPDF}
+              onExportExcel={handleExportExcel}
               onPrint={handlePrint}
               isConfirming={isConfirming}
             />
@@ -272,6 +297,7 @@ export function FechamentoDiaDialog({
           conciliacoes={conciliacoes}
           onConfirm={onConfirm}
           onExportPDF={handleExportPDF}
+          onExportExcel={handleExportExcel}
           onPrint={handlePrint}
           isConfirming={isConfirming}
         />
