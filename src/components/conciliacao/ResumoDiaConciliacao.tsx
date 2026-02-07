@@ -48,48 +48,48 @@ export function ResumoDiaConciliacao({
 
   return (
     <Card className={cn(
-      "border-2",
+      "border-2 overflow-hidden",
       isComplete && "border-success/50 bg-success/5",
       hasIssues && !isComplete && "border-warning/50 bg-warning/5",
       isFechado && "border-primary/50 bg-primary/5"
     )}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-muted-foreground" />
-            <CardTitle className="text-base font-medium capitalize">
+      <CardHeader className="pb-3 px-3 sm:px-6">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
+            <CardTitle className="text-sm sm:text-base font-medium capitalize truncate">
               {getDateLabel()}
             </CardTitle>
           </div>
           {isFechado ? (
-            <Badge className="bg-primary/10 text-primary border-primary/30">
+            <Badge className="bg-primary/10 text-primary border-primary/30 shrink-0 text-[10px] sm:text-xs">
               <FileCheck className="w-3 h-3 mr-1" />
               Fechado
             </Badge>
           ) : isComplete ? (
-            <Badge className="bg-success/10 text-success border-success/30">
+            <Badge className="bg-success/10 text-success border-success/30 shrink-0 text-[10px] sm:text-xs">
               <CheckCircle2 className="w-3 h-3 mr-1" />
               Completo
             </Badge>
           ) : hasIssues ? (
-            <Badge className="bg-warning/10 text-warning border-warning/30">
+            <Badge className="bg-warning/10 text-warning border-warning/30 shrink-0 text-[10px] sm:text-xs">
               <AlertTriangle className="w-3 h-3 mr-1" />
               Pendências
             </Badge>
           ) : (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="shrink-0 text-[10px] sm:text-xs">
               <Clock className="w-3 h-3 mr-1" />
               Em andamento
             </Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3 sm:space-y-4 px-3 sm:px-6">
         {/* Progress Bar */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progresso da conciliação</span>
-            <span className="font-medium">{Math.round(progressValue)}%</span>
+        <div className="space-y-1.5 sm:space-y-2">
+          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+            <span className="text-muted-foreground truncate">Progresso</span>
+            <span className="font-medium shrink-0">{Math.round(progressValue)}%</span>
           </div>
           <Progress 
             value={progressValue} 
@@ -102,39 +102,39 @@ export function ResumoDiaConciliacao({
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          <div className="text-center p-2 sm:p-3 rounded-lg bg-success/10 min-w-0">
-            <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-success mx-auto mb-1" />
-            <p className="text-lg sm:text-2xl font-bold text-success truncate">{stats.conciliados}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Conciliados</p>
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+          <div className="text-center p-1.5 sm:p-2 rounded-lg bg-success/10 overflow-hidden">
+            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-success mx-auto mb-0.5" />
+            <p className="text-sm sm:text-lg font-bold text-success">{stats.conciliados}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight">Concil.</p>
           </div>
-          <div className="text-center p-2 sm:p-3 rounded-lg bg-warning/10 min-w-0">
-            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-warning mx-auto mb-1" />
-            <p className="text-lg sm:text-2xl font-bold text-warning truncate">{stats.pendentes}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Pendentes</p>
+          <div className="text-center p-1.5 sm:p-2 rounded-lg bg-warning/10 overflow-hidden">
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-warning mx-auto mb-0.5" />
+            <p className="text-sm sm:text-lg font-bold text-warning">{stats.pendentes}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight">Pend.</p>
           </div>
-          <div className="text-center p-2 sm:p-3 rounded-lg bg-destructive/10 min-w-0">
-            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-destructive mx-auto mb-1" />
-            <p className="text-lg sm:text-2xl font-bold text-destructive truncate">{stats.divergentes}</p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Divergentes</p>
+          <div className="text-center p-1.5 sm:p-2 rounded-lg bg-destructive/10 overflow-hidden">
+            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-destructive mx-auto mb-0.5" />
+            <p className="text-sm sm:text-lg font-bold text-destructive">{stats.divergentes}</p>
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground leading-tight">Diverg.</p>
           </div>
         </div>
 
         {/* Values Summary */}
-        <div className="space-y-2 pt-2 border-t overflow-hidden">
-          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
-            <span className="text-muted-foreground shrink-0">Total Extrato:</span>
-            <span className="font-medium truncate">{formatCurrency(stats.valorTotalExtrato)}</span>
+        <div className="space-y-1.5 sm:space-y-2 pt-2 border-t">
+          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
+            <span className="text-muted-foreground">Extrato:</span>
+            <span className="font-medium text-right">{formatCurrency(stats.valorTotalExtrato)}</span>
           </div>
-          <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
-            <span className="text-muted-foreground shrink-0">Total Lançamentos:</span>
-            <span className="font-medium truncate">{formatCurrency(stats.valorTotalLancamentos)}</span>
+          <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
+            <span className="text-muted-foreground">Lançam.:</span>
+            <span className="font-medium text-right">{formatCurrency(stats.valorTotalLancamentos)}</span>
           </div>
           {stats.diferencaValores !== 0 && (
-            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
-              <span className="text-muted-foreground shrink-0">Diferença:</span>
+            <div className="flex items-center justify-between gap-1 text-[10px] sm:text-xs">
+              <span className="text-muted-foreground">Diferença:</span>
               <span className={cn(
-                "font-medium truncate",
+                "font-medium text-right",
                 stats.diferencaValores > 0 ? "text-success" : "text-destructive"
               )}>
                 {stats.diferencaValores > 0 ? "+" : ""}{formatCurrency(stats.diferencaValores)}
