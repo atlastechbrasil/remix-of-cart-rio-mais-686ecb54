@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   Clock,
   ArrowRightLeft,
-  Filter,
   RefreshCw,
   Link2,
   Loader2,
@@ -43,9 +42,11 @@ import {
   usePendentesCountByDate,
   useConciliacoesByDate,
 } from "@/hooks/useConciliacaoAdvanced";
+import { useFiltrosConciliacao } from "@/hooks/useFiltrosConciliacao";
 import { ExtratoList } from "@/components/conciliacao/ExtratoList";
 import { LancamentoList } from "@/components/conciliacao/LancamentoList";
 import { FiltroDataConciliacao } from "@/components/conciliacao/FiltroDataConciliacao";
+import { FiltrosAvancadosConciliacao } from "@/components/conciliacao/FiltrosAvancadosConciliacao";
 import { ConciliacaoTabs, TabsContent as ConciliacaoTabsContent } from "@/components/conciliacao/ConciliacaoTabs";
 import { ListaConciliados } from "@/components/conciliacao/ListaConciliados";
 import { ListaDivergencias } from "@/components/conciliacao/ListaDivergencias";
@@ -84,6 +85,19 @@ export default function Conciliacao() {
   const [selectedExtratoItem, setSelectedExtratoItem] = useState<ExtratoItem | null>(null);
   
   const desvincular = useDesvincularConciliacao();
+  
+  // Advanced filters hook
+  const {
+    filtros,
+    toggleStatus,
+    toggleTipoLancamento,
+    toggleTipoTransacao,
+    setValorRange,
+    limparFiltros,
+    filtrarExtratoItens,
+    filtrarLancamentos,
+    contadorAtivos: filtrosAtivos,
+  } = useFiltrosConciliacao();
 
   // Data hooks with date filter
   const { data: extratoItens, isLoading: loadingExtrato } = useExtratoItensByDate(
@@ -115,29 +129,16 @@ export default function Conciliacao() {
     );
   }, [conciliacoes]);
 
-  // Filter items by search term
+  // Apply advanced filters + search
   const filteredExtratoItens = useMemo(() => {
     if (!extratoItens) return [];
-    if (!searchTerm) return extratoItens;
-    const term = searchTerm.toLowerCase();
-    return extratoItens.filter(
-      (item) =>
-        item.descricao.toLowerCase().includes(term) ||
-        String(item.valor).includes(term)
-    );
-  }, [extratoItens, searchTerm]);
+    return filtrarExtratoItens(extratoItens, searchTerm);
+  }, [extratoItens, searchTerm, filtrarExtratoItens]);
 
   const filteredLancamentos = useMemo(() => {
     if (!lancamentos) return [];
-    if (!searchTerm) return lancamentos;
-    const term = searchTerm.toLowerCase();
-    return lancamentos.filter(
-      (item) =>
-        item.descricao.toLowerCase().includes(term) ||
-        item.categoria?.toLowerCase().includes(term) ||
-        String(item.valor).includes(term)
-    );
-  }, [lancamentos, searchTerm]);
+    return filtrarLancamentos(lancamentos, searchTerm);
+  }, [lancamentos, searchTerm, filtrarLancamentos]);
 
   const lancamentosPendentes = useMemo(() => {
     return filteredLancamentos.filter((l) => l.status_conciliacao === "pendente");
@@ -396,6 +397,15 @@ export default function Conciliacao() {
                         className="pl-8 h-9"
                       />
                     </div>
+                    <FiltrosAvancadosConciliacao
+                      filtros={filtros}
+                      onToggleStatus={toggleStatus}
+                      onToggleTipoLancamento={toggleTipoLancamento}
+                      onToggleTipoTransacao={toggleTipoTransacao}
+                      onSetValorRange={setValorRange}
+                      onLimpar={limparFiltros}
+                      contadorAtivos={filtrosAtivos}
+                    />
                     <Button
                       variant="outline"
                       size="sm"
