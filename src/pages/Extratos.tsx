@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import {
   FileSpreadsheet,
   CheckCircle2,
@@ -16,17 +16,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ImportarExtratoDialog } from "@/components/extratos/ImportarExtratoDialog";
 import { FiltrosExtratos } from "@/components/extratos/FiltrosExtratos";
+import { DetalhesExtratoDialog } from "@/components/extratos/DetalhesExtratoDialog";
 import { useExtratos, useContasBancarias } from "@/hooks/useConciliacao";
 import { useFiltrosExtratos } from "@/hooks/useFiltrosExtratos";
 import { format, parseISO } from "date-fns";
 import { ResponsiveTable, type Column } from "@/components/ui/responsive-table";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ExtratoItem {
   id: string;
   arquivo: string;
   conta_id: string;
-  conta_bancaria: { banco: string; conta: string } | null;
+  conta_bancaria: { banco: string; agencia?: string; conta: string } | null;
   periodo_inicio: string;
   periodo_fim: string;
   total_lancamentos: number;
@@ -49,7 +49,10 @@ const statusLabels: Record<string, string> = {
 export default function Extratos() {
   const { data: extratos, isLoading: loadingExtratos } = useExtratos();
   const { data: contas } = useContasBancarias();
-  const isMobile = useIsMobile();
+  
+  // Estado para dialog de detalhes
+  const [selectedExtrato, setSelectedExtrato] = useState<ExtratoItem | null>(null);
+  const [showDetalhes, setShowDetalhes] = useState(false);
 
   const {
     filtros,
@@ -64,6 +67,11 @@ export default function Extratos() {
 
   const handleImportSuccess = () => {
     // O hook já invalida o cache automaticamente
+  };
+
+  const handleViewDetails = (extrato: ExtratoItem) => {
+    setSelectedExtrato(extrato);
+    setShowDetalhes(true);
   };
 
   // Aplicar filtros aos extratos
@@ -157,7 +165,12 @@ export default function Extratos() {
 
   const renderActions = (item: ExtratoItem) => (
     <>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8"
+        onClick={() => handleViewDetails(item)}
+      >
         <Eye className="w-4 h-4" />
       </Button>
       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -312,6 +325,13 @@ export default function Extratos() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de Detalhes */}
+      <DetalhesExtratoDialog
+        extrato={selectedExtrato}
+        open={showDetalhes}
+        onOpenChange={setShowDetalhes}
+      />
     </MainLayout>
   );
 }
