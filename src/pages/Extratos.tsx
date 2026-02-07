@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import {
   FileSpreadsheet,
   CheckCircle2,
@@ -7,8 +7,6 @@ import {
   Eye,
   Trash2,
   Download,
-  Calendar,
-  Filter,
   Loader2,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -16,27 +14,18 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ImportarExtratoDialog } from "@/components/extratos/ImportarExtratoDialog";
+import { FiltrosExtratos } from "@/components/extratos/FiltrosExtratos";
 import { useExtratos, useContasBancarias } from "@/hooks/useConciliacao";
+import { useFiltrosExtratos } from "@/hooks/useFiltrosExtratos";
 import { format, parseISO } from "date-fns";
 import { ResponsiveTable, type Column } from "@/components/ui/responsive-table";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
 
 interface ExtratoItem {
   id: string;
   arquivo: string;
+  conta_id: string;
   conta_bancaria: { banco: string; conta: string } | null;
   periodo_inicio: string;
   periodo_fim: string;
@@ -61,11 +50,35 @@ export default function Extratos() {
   const { data: extratos, isLoading: loadingExtratos } = useExtratos();
   const { data: contas } = useContasBancarias();
   const isMobile = useIsMobile();
-  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const handleImportSuccess = (data: unknown[], banco: string, conta: string) => {
+  const {
+    filtros,
+    setContaId,
+    setPeriodo,
+    setStatus,
+    setBusca,
+    limparFiltros,
+    temFiltrosAtivos,
+    aplicarFiltros,
+  } = useFiltrosExtratos();
+
+  const handleImportSuccess = () => {
     // O hook já invalida o cache automaticamente
   };
+
+  // Aplicar filtros aos extratos
+  const extratosData = useMemo(() => {
+    const data = (extratos || []) as ExtratoItem[];
+    return aplicarFiltros(data);
+  }, [extratos, aplicarFiltros]);
+
+  // Estatísticas baseadas nos dados filtrados
+  const stats = useMemo(() => ({
+    total: extratosData.length,
+    conciliados: extratosData.filter((e) => e.status === "conciliado").length,
+    processando: extratosData.filter((e) => e.status === "processado").length,
+    erros: extratosData.filter((e) => e.status === "erro").length,
+  }), [extratosData]);
 
   if (loadingExtratos) {
     return (
@@ -77,7 +90,11 @@ export default function Extratos() {
     );
   }
 
-  const extratosData = (extratos || []) as ExtratoItem[];
+  const contasFormatadas = (contas || []).map((c) => ({
+    id: c.id,
+    banco: c.banco,
+    conta: c.conta,
+  }));
 
   const columns: Column<ExtratoItem>[] = [
     {
@@ -158,70 +175,24 @@ export default function Extratos() {
         title="Importação de Extratos"
         description="Importe e gerencie extratos bancários OFX e CSV"
       >
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          {/* Mobile: Collapsible filters */}
-          {isMobile ? (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setFiltersOpen(!filtersOpen)}>
-                <Filter className="w-4 h-4 mr-2" />
-                Filtros
-              </Button>
-              <ImportarExtratoDialog onImportSuccess={handleImportSuccess} />
-            </div>
-          ) : (
-            <>
-              <Select defaultValue="todos">
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Bancos</SelectItem>
-                  {contas?.map((conta) => (
-                    <SelectItem key={conta.id} value={conta.id}>
-                      {conta.banco}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button variant="outline">
-                <Calendar className="w-4 h-4 mr-2" />
-                Período
-              </Button>
-              <ImportarExtratoDialog onImportSuccess={handleImportSuccess} />
-            </>
-          )}
-        </div>
+        <ImportarExtratoDialog onImportSuccess={handleImportSuccess} />
       </PageHeader>
 
       <div className="flex-1 p-4 sm:p-6 space-y-4 sm:space-y-6">
-        {/* Mobile Filters Collapsible */}
-        {isMobile && (
-          <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <CollapsibleContent className="space-y-3">
-              <Card>
-                <CardContent className="p-4 space-y-3">
-                  <Select defaultValue="todos">
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Banco" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="todos">Todos os Bancos</SelectItem>
-                      {contas?.map((conta) => (
-                        <SelectItem key={conta.id} value={conta.id}>
-                          {conta.banco}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button variant="outline" className="w-full">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Selecionar Período
-                  </Button>
-                </CardContent>
-              </Card>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
+        {/* Filtros Avançados */}
+        <FiltrosExtratos
+          contas={contasFormatadas}
+          contaId={filtros.contaId}
+          periodo={filtros.periodo}
+          status={filtros.status}
+          busca={filtros.busca}
+          temFiltrosAtivos={temFiltrosAtivos}
+          onContaChange={setContaId}
+          onPeriodoChange={setPeriodo}
+          onStatusChange={setStatus}
+          onBuscaChange={setBusca}
+          onLimparFiltros={limparFiltros}
+        />
 
         {/* Estatísticas */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -233,7 +204,7 @@ export default function Extratos() {
                 </div>
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Importados</p>
-                  <p className="text-lg sm:text-2xl font-bold">{extratosData.length}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{stats.total}</p>
                 </div>
               </div>
             </CardContent>
@@ -248,7 +219,7 @@ export default function Extratos() {
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Conciliados</p>
                   <p className="text-lg sm:text-2xl font-bold text-success">
-                    {extratosData.filter((e) => e.status === "conciliado").length}
+                    {stats.conciliados}
                   </p>
                 </div>
               </div>
@@ -264,7 +235,7 @@ export default function Extratos() {
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Processando</p>
                   <p className="text-lg sm:text-2xl font-bold text-warning">
-                    {extratosData.filter((e) => e.status === "processado").length}
+                    {stats.processando}
                   </p>
                 </div>
               </div>
@@ -280,7 +251,7 @@ export default function Extratos() {
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Com Erros</p>
                   <p className="text-lg sm:text-2xl font-bold text-destructive">
-                    {extratosData.filter((e) => e.status === "erro").length}
+                    {stats.erros}
                   </p>
                 </div>
               </div>
@@ -292,13 +263,14 @@ export default function Extratos() {
         <Card>
           <CardHeader className="pb-3 sm:pb-6">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base sm:text-lg">Histórico de Importações</CardTitle>
-              {!isMobile && (
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filtrar
-                </Button>
-              )}
+              <CardTitle className="text-base sm:text-lg">
+                Histórico de Importações
+                {temFiltrosAtivos && (
+                  <Badge variant="secondary" className="ml-2">
+                    {extratosData.length} resultado{extratosData.length !== 1 && "s"}
+                  </Badge>
+                )}
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="px-3 sm:px-6 pb-4 sm:pb-6">
@@ -312,11 +284,29 @@ export default function Extratos() {
             ) : (
               <div className="py-8 sm:py-12 text-center">
                 <FileSpreadsheet className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-base sm:text-lg font-semibold mb-2">Nenhum extrato importado</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Importe seu primeiro extrato bancário para iniciar a conciliação.
-                </p>
-                <ImportarExtratoDialog onImportSuccess={handleImportSuccess} />
+                {temFiltrosAtivos ? (
+                  <>
+                    <h3 className="text-base sm:text-lg font-semibold mb-2">
+                      Nenhum extrato encontrado
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Tente ajustar os filtros para encontrar o que procura.
+                    </p>
+                    <Button variant="outline" onClick={limparFiltros}>
+                      Limpar Filtros
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-base sm:text-lg font-semibold mb-2">
+                      Nenhum extrato importado
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Importe seu primeiro extrato bancário para iniciar a conciliação.
+                    </p>
+                    <ImportarExtratoDialog onImportSuccess={handleImportSuccess} />
+                  </>
+                )}
               </div>
             )}
           </CardContent>
