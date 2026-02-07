@@ -12,7 +12,6 @@ import {
   Sparkles,
   Lightbulb,
   Keyboard,
-  Database,
 } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -68,9 +67,6 @@ import { SugestoesConciliacaoDialog } from "@/components/conciliacao/SugestoesCo
 import { AutoConciliacaoDialog } from "@/components/conciliacao/AutoConciliacaoDialog";
 import { useDesvincularConciliacao } from "@/hooks/useConciliacao";
 import { getBestMatch } from "@/lib/conciliacao-matcher";
-import { seedTestData, cleanTestData } from "@/lib/seed-test-data";
-import { toast } from "sonner";
-import { useTenant } from "@/contexts/TenantContext";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PresetPeriodo, ConciliacaoTabValue, ConciliacaoDetalhada, ExtratoItem } from "@/types/conciliacao";
 
@@ -79,7 +75,6 @@ export default function Conciliacao() {
   const { data: contas, isLoading: loadingContas } = useContasBancarias();
   const vincular = useVincularConciliacao();
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { cartorioAtivo } = useTenant();
   const queryClient = useQueryClient();
 
   // State
@@ -91,7 +86,7 @@ export default function Conciliacao() {
   const [mobileTab, setMobileTab] = useState<string>("extrato");
   const [mainTab, setMainTab] = useState<ConciliacaoTabValue>("pendentes");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isSeeding, setIsSeeding] = useState(false);
+  
   
   // Dialog states
   const [detailsConciliacao, setDetailsConciliacao] = useState<ConciliacaoDetalhada | null>(null);
@@ -213,47 +208,6 @@ export default function Conciliacao() {
     // TODO: Implement fechamento logic (mark day as closed in database)
     setShowFechamentoDialog(false);
   };
-
-  // Seed test data function
-  const handleSeedTestData = async () => {
-    if (!selectedContaId) {
-      toast.error("Selecione uma conta bancária primeiro");
-      return;
-    }
-
-    setIsSeeding(true);
-    try {
-      const result = await seedTestData(selectedContaId, cartorioAtivo || null);
-      toast.success(
-        `Dados de teste gerados! ${result.itensCount} itens de extrato e ${result.lancamentosCount} lançamentos para ${result.periodo.inicio} - ${result.periodo.fim}`
-      );
-      // Invalidate all queries to refresh data
-      queryClient.invalidateQueries();
-      // Set date to today to see the new data
-      setDataSelecionada(new Date());
-      setPresetPeriodo("customizado");
-    } catch (error: any) {
-      console.error("Erro ao gerar dados de teste:", error);
-      toast.error(`Erro ao gerar dados: ${error.message}`);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
-  const handleCleanTestData = async () => {
-    setIsSeeding(true);
-    try {
-      await cleanTestData();
-      toast.success("Dados de teste removidos com sucesso!");
-      queryClient.invalidateQueries();
-    } catch (error: any) {
-      console.error("Erro ao limpar dados:", error);
-      toast.error(`Erro ao limpar dados: ${error.message}`);
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
   // Handle opening suggestions dialog when selecting an extrato item
   const handleExtratoSelect = (id: string | null) => {
     setSelectedExtrato(id);
@@ -384,25 +338,10 @@ export default function Conciliacao() {
                 onPresetChange={setPresetPeriodo}
                 pendentesCount={pendentesCount}
               />
-              <div className="flex gap-2 self-start">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleSeedTestData}
-                  disabled={isSeeding || !selectedContaId}
-                >
-                  {isSeeding ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Database className="w-4 h-4 mr-2" />
-                  )}
-                  Gerar Teste
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries()}>
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Atualizar
-                </Button>
-              </div>
+              <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries()}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Atualizar
+              </Button>
             </div>
           </CardContent>
         </Card>
