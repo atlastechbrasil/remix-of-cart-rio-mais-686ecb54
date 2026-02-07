@@ -442,6 +442,7 @@ export function useConciliacoes() {
 export function useVincularConciliacao() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { cartorioAtivo } = useTenant();
 
   return useMutation({
     mutationFn: async ({
@@ -455,11 +456,12 @@ export function useVincularConciliacao() {
       diferenca?: number;
       observacao?: string;
     }) => {
-      // Criar registro de conciliação
+      // Criar registro de conciliação com cartorio_id
       const { error: conciliacaoError } = await supabase
         .from("conciliacoes")
         .insert({
           user_id: user!.id,
+          cartorio_id: cartorioAtivo?.id || null,
           extrato_item_id: extratoItemId,
           lancamento_id: lancamentoId,
           diferenca,
