@@ -279,19 +279,15 @@ export function useDeleteCartorioUsuario() {
   });
 }
 
-// Hook para listar perfis de acesso do cartório
+// Hook para listar perfis de acesso globais
 export function usePerfisAcesso() {
-  const { cartorioAtivo } = useTenant();
-
   return useQuery({
-    queryKey: ["perfis-acesso", cartorioAtivo?.id],
+    queryKey: ["perfis-acesso"],
     queryFn: async (): Promise<PerfilAcesso[]> => {
-      if (!cartorioAtivo) return [];
-
       const { data, error } = await supabase
         .from("perfis_acesso")
         .select("*")
-        .eq("cartorio_id", cartorioAtivo.id)
+        .is("cartorio_id", null) // Perfis globais
         .order("nome");
 
       if (error) throw error;
@@ -300,14 +296,12 @@ export function usePerfisAcesso() {
         permissoes: (p.permissoes as Record<string, Record<string, boolean>>) || {},
       }));
     },
-    enabled: !!cartorioAtivo,
   });
 }
 
-// Hook para criar perfil de acesso
+// Hook para criar perfil de acesso global
 export function useCreatePerfilAcesso() {
   const queryClient = useQueryClient();
-  const { cartorioAtivo } = useTenant();
 
   return useMutation({
     mutationFn: async ({
@@ -321,12 +315,10 @@ export function useCreatePerfilAcesso() {
       cor?: string;
       permissoes: Record<string, Record<string, boolean>>;
     }) => {
-      if (!cartorioAtivo) throw new Error("Nenhum cartório selecionado");
-
       const { data, error } = await supabase
         .from("perfis_acesso")
         .insert({
-          cartorio_id: cartorioAtivo.id,
+          cartorio_id: null, // Perfil global
           nome,
           descricao,
           cor,
