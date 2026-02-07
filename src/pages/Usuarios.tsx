@@ -44,6 +44,7 @@ import {
 } from "@/hooks/useUsuarios";
 import { NovoUsuarioDialog } from "@/components/usuarios/NovoUsuarioDialog";
 import { NovoPerfilDialog } from "@/components/usuarios/NovoPerfilDialog";
+import { EditarPerfilDialog } from "@/components/usuarios/EditarPerfilDialog";
 import { EditarUsuarioDialog } from "@/components/usuarios/EditarUsuarioDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -66,7 +67,9 @@ export default function Usuarios() {
   const [novoUsuarioOpen, setNovoUsuarioOpen] = useState(false);
   const [novoPerfilOpen, setNovoPerfilOpen] = useState(false);
   const [editarUsuarioOpen, setEditarUsuarioOpen] = useState(false);
+  const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
   const [usuarioParaEditar, setUsuarioParaEditar] = useState<UsuarioAgregado | null>(null);
+  const [perfilParaEditar, setPerfilParaEditar] = useState<PerfilAcesso | null>(null);
   const isMobile = useIsMobile();
 
   const { cartorioAtivo, isSuperAdmin, isLoading: tenantLoading } = useTenant();
@@ -478,7 +481,15 @@ export default function Usuarios() {
                           {perfil.nome}
                         </Badge>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" className="h-8 px-2 sm:px-3">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 sm:px-3"
+                            onClick={() => {
+                              setPerfilParaEditar(perfil);
+                              setEditarPerfilOpen(true);
+                            }}
+                          >
                             <span className="hidden sm:inline">Editar</span>
                             <Edit className="w-4 h-4 sm:hidden" />
                           </Button>
@@ -529,6 +540,11 @@ export default function Usuarios() {
       {/* Dialogs */}
       <NovoUsuarioDialog open={novoUsuarioOpen} onOpenChange={setNovoUsuarioOpen} />
       <NovoPerfilDialog open={novoPerfilOpen} onOpenChange={setNovoPerfilOpen} />
+      <EditarPerfilDialog
+        open={editarPerfilOpen}
+        onOpenChange={setEditarPerfilOpen}
+        perfil={perfilParaEditar}
+      />
       <EditarUsuarioDialog
         open={editarUsuarioOpen}
         onOpenChange={setEditarUsuarioOpen}
