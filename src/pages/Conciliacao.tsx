@@ -433,8 +433,9 @@ export default function Conciliacao() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <CardTitle className="text-lg">Conciliação do Dia</CardTitle>
                 {mainTab === "pendentes" && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative flex-1 sm:w-40">
+                  <div className="flex flex-col gap-2">
+                    {/* Linha 1: Busca */}
+                    <div className="relative w-full">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
                         ref={searchInputRef}
@@ -444,79 +445,81 @@ export default function Conciliacao() {
                         className="pl-8 h-9"
                       />
                     </div>
-                    <FiltrosAvancadosConciliacao
-                      filtros={filtros}
-                      onToggleStatus={toggleStatus}
-                      onToggleTipoLancamento={toggleTipoLancamento}
-                      onToggleTipoTransacao={toggleTipoTransacao}
-                      onSetValorRange={setValorRange}
-                      onLimpar={limparFiltros}
-                      contadorAtivos={filtrosAtivos}
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowAutoDialog(true)}
-                      disabled={stats.pendentes === 0}
-                    >
-                      <Sparkles className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Auto</span>
-                    </Button>
-                    {selectedExtrato && (
+                    {/* Linha 2: Botões */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <FiltrosAvancadosConciliacao
+                        filtros={filtros}
+                        onToggleStatus={toggleStatus}
+                        onToggleTipoLancamento={toggleTipoLancamento}
+                        onToggleTipoTransacao={toggleTipoTransacao}
+                        onSetValorRange={setValorRange}
+                        onLimpar={limparFiltros}
+                        contadorAtivos={filtrosAtivos}
+                      />
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setShowSugestoesDialog(true)}
+                        onClick={() => setShowAutoDialog(true)}
+                        disabled={stats.pendentes === 0}
                       >
-                        <Lightbulb className="w-4 h-4 mr-2" />
-                        <span className="hidden sm:inline">Sugestões</span>
+                        <Sparkles className="w-4 h-4 mr-1.5" />
+                        Auto
                       </Button>
-                    )}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
-                            onClick={handleVincular}
-                            className="flex-shrink-0"
-                          >
-                            {vincular.isPending ? (
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                              <Link2 className="w-4 h-4 mr-2" />
-                            )}
-                            <span className="hidden sm:inline">Vincular</span>
-                            <span className="sm:hidden">OK</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          <p>Vincular itens selecionados <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-[10px]">Enter</kbd></p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    {!isMobile && (
+                      {selectedExtrato && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowSugestoesDialog(true)}
+                        >
+                          <Lightbulb className="w-4 h-4 mr-1.5" />
+                          Sugestões
+                        </Button>
+                      )}
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="w-8 h-8">
-                              <Keyboard className="w-4 h-4 text-muted-foreground" />
+                            <Button
+                              size="sm"
+                              disabled={!selectedExtrato || !selectedLancamento || vincular.isPending}
+                              onClick={handleVincular}
+                              className="flex-shrink-0"
+                            >
+                              {vincular.isPending ? (
+                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                              ) : (
+                                <Link2 className="w-4 h-4 mr-1.5" />
+                              )}
+                              Vincular
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom" className="text-left">
-                            <p className="font-semibold mb-1">Atalhos de Teclado</p>
-                            <div className="text-xs space-y-0.5">
-                              <p><kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+F</kbd> Buscar</p>
-                              <p><kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> Vincular</p>
-                              <p><kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> Limpar seleção</p>
-                              <p><kbd className="px-1 py-0.5 bg-muted rounded">←</kbd> <kbd className="px-1 py-0.5 bg-muted rounded">→</kbd> Navegar dias</p>
-                              <p><kbd className="px-1 py-0.5 bg-muted rounded">S</kbd> Sugestões</p>
-                              <p><kbd className="px-1 py-0.5 bg-muted rounded">A</kbd> Auto-match</p>
-                            </div>
+                          <TooltipContent side="bottom">
+                            <p>Vincular itens selecionados <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-[10px]">Enter</kbd></p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                    )}
+                      {!isMobile && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="w-8 h-8">
+                                <Keyboard className="w-4 h-4 text-muted-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-left">
+                              <p className="font-semibold mb-1">Atalhos de Teclado</p>
+                              <div className="text-xs space-y-0.5">
+                                <p><kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+F</kbd> Buscar</p>
+                                <p><kbd className="px-1 py-0.5 bg-muted rounded">Enter</kbd> Vincular</p>
+                                <p><kbd className="px-1 py-0.5 bg-muted rounded">Esc</kbd> Limpar seleção</p>
+                                <p><kbd className="px-1 py-0.5 bg-muted rounded">←</kbd> <kbd className="px-1 py-0.5 bg-muted rounded">→</kbd> Navegar dias</p>
+                                <p><kbd className="px-1 py-0.5 bg-muted rounded">S</kbd> Sugestões</p>
+                                <p><kbd className="px-1 py-0.5 bg-muted rounded">A</kbd> Auto-match</p>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
