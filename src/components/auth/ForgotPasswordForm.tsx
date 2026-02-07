@@ -38,30 +38,32 @@ export function ForgotPasswordForm({ onBack }: ForgotPasswordFormProps) {
 
     const redirectUrl = `${window.location.origin}/reset-password`;
 
-    const { error: supabaseError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl,
-    });
-
-    if (supabaseError) {
-      setIsLoading(false);
-      toast.error("Erro ao enviar email de recuperação. Tente novamente.");
-      return;
-    }
-
-    // Send custom email via Resend
+    // Send password reset email via Resend (custom edge function)
     try {
-      const { error: functionError } = await supabase.functions.invoke('send-password-reset', {
+      const { data, error: functionError } = await supabase.functions.invoke('send-password-reset', {
         body: {
           email: email,
-          resetUrl: redirectUrl,
+          redirectUrl: redirectUrl,
         },
       });
 
       if (functionError) {
-        console.error("Error sending custom email:", functionError);
+        console.error("Error sending password reset email:", functionError);
+        toast.error("Erro ao enviar email de recuperação. Tente novamente.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data && !data.success) {
+        toast.error("Erro ao enviar email de recuperação. Tente novamente.");
+        setIsLoading(false);
+        return;
       }
     } catch (err) {
       console.error("Error invoking edge function:", err);
+      toast.error("Erro ao enviar email de recuperação. Tente novamente.");
+      setIsLoading(false);
+      return;
     }
 
     setIsLoading(false);
