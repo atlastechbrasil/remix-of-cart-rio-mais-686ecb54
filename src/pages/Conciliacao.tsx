@@ -458,10 +458,9 @@ export default function Conciliacao() {
                       size="sm"
                       onClick={() => setShowAutoDialog(true)}
                       disabled={stats.pendentes === 0}
-                      className="hidden sm:flex"
                     >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Auto
+                      <Sparkles className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Auto</span>
                     </Button>
                     {selectedExtrato && (
                       <Button
