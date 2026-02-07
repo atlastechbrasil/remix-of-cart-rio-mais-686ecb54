@@ -47,6 +47,9 @@ import { FiltroDataConciliacao } from "@/components/conciliacao/FiltroDataConcil
 import { ConciliacaoTabs, TabsContent as ConciliacaoTabsContent } from "@/components/conciliacao/ConciliacaoTabs";
 import { ListaConciliados } from "@/components/conciliacao/ListaConciliados";
 import { ListaDivergencias } from "@/components/conciliacao/ListaDivergencias";
+import { DetalhesConciliacaoDialog } from "@/components/conciliacao/DetalhesConciliacaoDialog";
+import { EditarConciliacaoDialog } from "@/components/conciliacao/EditarConciliacaoDialog";
+import { useDesvincularConciliacao } from "@/hooks/useConciliacao";
 import type { PresetPeriodo, ConciliacaoTabValue, ConciliacaoDetalhada } from "@/types/conciliacao";
 
 export default function Conciliacao() {
@@ -63,6 +66,13 @@ export default function Conciliacao() {
   const [mobileTab, setMobileTab] = useState<string>("extrato");
   const [mainTab, setMainTab] = useState<ConciliacaoTabValue>("pendentes");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Dialog states
+  const [detailsConciliacao, setDetailsConciliacao] = useState<ConciliacaoDetalhada | null>(null);
+  const [editConciliacao, setEditConciliacao] = useState<ConciliacaoDetalhada | null>(null);
+  const [confirmDesvincular, setConfirmDesvincular] = useState<ConciliacaoDetalhada | null>(null);
+  
+  const desvincular = useDesvincularConciliacao();
 
   // Data hooks with date filter
   const { data: extratoItens, isLoading: loadingExtrato } = useExtratoItensByDate(
@@ -148,8 +158,22 @@ export default function Conciliacao() {
   };
 
   const handleViewDetails = (conciliacao: ConciliacaoDetalhada) => {
-    // TODO: Open details dialog
-    console.log("View details:", conciliacao);
+    setDetailsConciliacao(conciliacao);
+  };
+
+  const handleEditConciliacao = (conciliacao: ConciliacaoDetalhada) => {
+    setDetailsConciliacao(null);
+    setEditConciliacao(conciliacao);
+  };
+
+  const handleDesvincularFromDetails = () => {
+    if (detailsConciliacao) {
+      setDetailsConciliacao(null);
+      desvincular.mutate({
+        extratoItemId: detailsConciliacao.extrato_item_id,
+        lancamentoId: detailsConciliacao.lancamento_id,
+      });
+    }
   };
 
   const isLoading = loadingContas;
@@ -431,6 +455,21 @@ export default function Conciliacao() {
           </Card>
         )}
       </div>
+
+      {/* Dialogs */}
+      <DetalhesConciliacaoDialog
+        conciliacao={detailsConciliacao}
+        open={!!detailsConciliacao}
+        onOpenChange={(open) => !open && setDetailsConciliacao(null)}
+        onEdit={() => detailsConciliacao && handleEditConciliacao(detailsConciliacao)}
+        onDesvincular={handleDesvincularFromDetails}
+      />
+
+      <EditarConciliacaoDialog
+        conciliacao={editConciliacao}
+        open={!!editConciliacao}
+        onOpenChange={(open) => !open && setEditConciliacao(null)}
+      />
     </MainLayout>
   );
 }
