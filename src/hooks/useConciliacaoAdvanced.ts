@@ -85,6 +85,7 @@ export function useLancamentosByDate(data?: Date) {
 }
 
 // Hook for fetching detailed reconciliations by date
+// Fetches conciliations where the extrato_item has the selected transaction date
 export function useConciliacoesByDate(data?: Date) {
   const { user } = useAuth();
   const { cartorioAtivo } = useTenant();
@@ -94,9 +95,9 @@ export function useConciliacoesByDate(data?: Date) {
     queryFn: async () => {
       if (!data) return [];
 
-      const startDate = startOfDay(data).toISOString();
-      const endDate = endOfDay(data).toISOString();
+      const dateStr = format(data, "yyyy-MM-dd");
 
+      // First, fetch all conciliacoes with their related data
       let query = supabase
         .from("conciliacoes")
         .select(`
@@ -104,8 +105,6 @@ export function useConciliacoesByDate(data?: Date) {
           extrato_item:extrato_itens(*),
           lancamento:lancamentos(*)
         `)
-        .gte("conciliado_em", startDate)
-        .lte("conciliado_em", endDate)
         .order("conciliado_em", { ascending: false });
 
       if (cartorioAtivo) {
@@ -114,7 +113,14 @@ export function useConciliacoesByDate(data?: Date) {
 
       const { data: conciliacoes, error } = await query;
       if (error) throw error;
-      return conciliacoes as ConciliacaoDetalhada[];
+
+      // Filter by extrato_item's transaction date (the date the user selected)
+      const filtered = (conciliacoes || []).filter((c) => {
+        const extratoDate = c.extrato_item?.data_transacao;
+        return extratoDate === dateStr;
+      });
+
+      return filtered as ConciliacaoDetalhada[];
     },
     enabled: !!user && !!data,
   });
